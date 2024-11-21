@@ -20,20 +20,48 @@ use woff2::decode::{convert_woff2_to_ttf, is_woff2};
 /// Loads fonts.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_fonts(font_options: &JsFontOptions) -> Database {
-    // Create a new font database
     let mut fontdb = Database::new();
     let now = std::time::Instant::now();
 
-    // 加载指定路径的字体
-    for path in &font_options.font_files {
-        if let Err(e) = fontdb.load_font_file(path) {
-            warn!("Failed to load '{}' cause {}.", path, e);
+    if font_options.preload_fonts {
+        // 预加载模式: 一次性读取所有字体文件到内存
+        for path in &font_options.font_files {
+            match std::fs::read(path) {
+                Ok(buffer) => {
+                    let _ = fontdb.load_font_data(buffer);
+                }
+                Err(e) => {
+                    warn!("Failed to read font file '{}' cause {}.", path, e);
+                }
+            }
         }
-    }
 
-    // Load font directories
-    for path in &font_options.font_dirs {
-        fontdb.load_fonts_dir(path);
+        // 加载字体目录
+        for dir in &font_options.font_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    if let Ok(path) = entry.path().canonicalize() {
+                        if path.is_file() {
+                            if let Ok(buffer) = std::fs::read(&path) {
+                                let _ = fontdb.load_font_data(buffer);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // 默认模式: 直接传递文件路径
+        for path in &font_options.font_files {
+            if let Err(e) = fontdb.load_font_file(path) {
+                warn!("Failed to load '{}' cause {}.", path, e);
+            }
+        }
+
+        // Load font directories
+        for path in &font_options.font_dirs {
+            fontdb.load_fonts_dir(path);
+        }
     }
 
     // 加载系统字体
