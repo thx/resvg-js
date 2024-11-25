@@ -17,6 +17,16 @@ use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use woff2::decode::{convert_woff2_to_ttf, is_woff2};
 
+fn load_font_buffer(path: impl AsRef<std::path::Path>) -> Option<Vec<u8>> {
+    match std::fs::read(path.as_ref()) {
+        Ok(buffer) => Some(buffer),
+        Err(e) => {
+            warn!("Failed to read font file '{}' cause {}.", path.as_ref().display(), e);
+            None
+        }
+    }
+}
+
 /// Loads fonts.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_fonts(font_options: &JsFontOptions) -> Database {
@@ -24,30 +34,19 @@ pub fn load_fonts(font_options: &JsFontOptions) -> Database {
     let now = std::time::Instant::now();
 
     if font_options.preload_fonts {
-        // 预加载模式: 一次性读取所有字体文件到内存
-        for path in &font_options.font_files {
-            match std::fs::read(path) {
-                Ok(buffer) => {
-                    let _ = fontdb.load_font_data(buffer);
-                }
-                Err(e) => {
-                    warn!("Failed to read font file '{}' cause {}.", path, e);
-                }
-            }
-        }
+        // 预加载单个字体文件
+        font_options.font_files.iter()
+            .filter_map(load_font_buffer)
+            .for_each(|buffer| { let _ = fontdb.load_font_data(buffer); });
 
-        // 加载字体目录
+        // 预加载字体目录
         for dir in &font_options.font_dirs {
             if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    if let Ok(path) = entry.path().canonicalize() {
-                        if path.is_file() {
-                            if let Ok(buffer) = std::fs::read(&path) {
-                                let _ = fontdb.load_font_data(buffer);
-                            }
-                        }
-                    }
-                }
+                entries.filter_map(Result::ok)
+                    .filter_map(|entry| entry.path().canonicalize().ok())
+                    .filter(|path| path.is_file())
+                    .filter_map(load_font_buffer)
+                    .for_each(|buffer| { let _ = fontdb.load_font_data(buffer); });
             }
         }
     } else {
