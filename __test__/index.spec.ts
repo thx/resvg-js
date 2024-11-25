@@ -5,7 +5,7 @@ import test from 'ava'
 import jimp from 'jimp-compact'
 import fetch from 'node-fetch'
 
-import { Resvg, renderAsync } from '../index'
+import { Resvg, ResvgRenderOptions, renderAsync } from '../index'
 
 import { jimpToRgbaPixels } from './helper'
 
@@ -703,4 +703,40 @@ test('should throw (SVG string is empty)', (t) => {
 
   t.is(error.code, 'GenericFailure')
   t.is(error.message, 'SVG data parsing failed cause the document does not have a root node')
+})
+
+// issue: https://github.com/thx/resvg-js/issues/367
+test('Load custom font with preload_fonts', async (t) => {
+  const filePath = '../example/text.svg'
+  const svg = await fs.readFile(join(__dirname, filePath))
+  const svgString = svg.toString('utf-8')
+  const options: ResvgRenderOptions = {
+    font: {
+      fontFiles: ['./example/SourceHanSerifCN-Light-subset.ttf'], // Load custom fonts.
+      loadSystemFonts: false, // It will be faster to disable loading system fonts.
+      defaultFontFamily: 'Source Han Serif CN Light',
+      preloadFonts: false,
+    },
+  }
+  const expectResvg = new Resvg(svgString, options)
+  const expectPngData = expectResvg.render()
+  const expectPngBuffer = expectPngData.asPng()
+  const expectedResult = await jimp.read(Buffer.from(expectPngBuffer))
+
+  // enable preloadFonts
+  options.font!.preloadFonts = true
+  const actualResvg = new Resvg(svgString, options)
+  const actualPngData = actualResvg.render()
+  const actualPngBuffer = actualPngData.asPng()
+  const actualPng = await jimp.read(Buffer.from(actualPngBuffer))
+  t.is(jimp.diff(expectedResult, actualPng, 0.01).percent, 0) // 0 means similar, 1 means not similar
+
+  // use fontDirs
+  delete options.font!.fontFiles
+  options.font!.fontDirs = ['./example']
+  const actualResvg2 = new Resvg(svgString, options)
+  const actualPngData2 = actualResvg2.render()
+  const actualPngBuffer2 = actualPngData2.asPng()
+  const actualPng2 = await jimp.read(Buffer.from(actualPngBuffer2))
+  t.is(jimp.diff(expectedResult, actualPng2, 0.01).percent, 0) // 0 means similar, 1 means not similar
 })
