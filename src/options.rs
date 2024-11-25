@@ -240,6 +240,7 @@ pub struct JsFontOptions {
 
     /// Whether to preload font files into memory to improve performance.
     /// When enabled, font files will be read into memory at once to avoid frequent IO.
+    ///
     /// Default: false
     pub preload_fonts: bool,
 
