@@ -17,6 +17,7 @@ use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use woff2::decode::{convert_woff2_to_ttf, is_woff2};
 
+#[cfg(not(target_arch = "wasm32"))]
 fn load_font_buffer(path: impl AsRef<std::path::Path>) -> Option<Vec<u8>> {
     match std::fs::read(path.as_ref()) {
         Ok(buffer) => Some(buffer),
