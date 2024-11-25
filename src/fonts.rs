@@ -21,7 +21,11 @@ fn load_font_buffer(path: impl AsRef<std::path::Path>) -> Option<Vec<u8>> {
     match std::fs::read(path.as_ref()) {
         Ok(buffer) => Some(buffer),
         Err(e) => {
-            warn!("Failed to read font file '{}' cause {}.", path.as_ref().display(), e);
+            warn!(
+                "Failed to read font file '{}' cause {}.",
+                path.as_ref().display(),
+                e
+            );
             None
         }
     }
@@ -35,18 +39,25 @@ pub fn load_fonts(font_options: &JsFontOptions) -> Database {
 
     if font_options.preload_fonts {
         // 预加载单个字体文件
-        font_options.font_files.iter()
+        font_options
+            .font_files
+            .iter()
             .filter_map(load_font_buffer)
-            .for_each(|buffer| { let _ = fontdb.load_font_data(buffer); });
+            .for_each(|buffer| {
+                let _ = fontdb.load_font_data(buffer);
+            });
 
         // 预加载字体目录
         for dir in &font_options.font_dirs {
             if let Ok(entries) = std::fs::read_dir(dir) {
-                entries.filter_map(Result::ok)
+                entries
+                    .filter_map(Result::ok)
                     .filter_map(|entry| entry.path().canonicalize().ok())
                     .filter(|path| path.is_file())
                     .filter_map(load_font_buffer)
-                    .for_each(|buffer| { let _ = fontdb.load_font_data(buffer); });
+                    .for_each(|buffer| {
+                        let _ = fontdb.load_font_data(buffer);
+                    });
             }
         }
     } else {
