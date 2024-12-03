@@ -73,28 +73,28 @@
     "version": "napi version"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0",
-    "@swc-node/register": "^1.9.0",
-    "@swc/core": "^1.4.6",
-    "@types/node": "^22.0.0",
+    "@napi-rs/cli": "^2.18.4",
+    "@swc-node/register": "^1.10.9",
+    "@swc/core": "^1.9.3",
+    "@types/node": "^22.10.1",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.7.2",
     "ava": "^5.3.1",
     "copyfiles": "^2.4.1",
-    "dts-bundle-generator": "^9.0.0",
+    "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.24.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-sonarjs": "^0.25.0",
     "husky": "^8.0.0",
     "jimp-compact": "^0.16.1-2",
-    "lint-staged": "^15.0.0",
+    "lint-staged": "^15.2.10",
     "node-fetch": "2.x",
-    "npm-run-all2": "^7.0.0",
+    "npm-run-all2": "^7.0.1",
     "prettier": "^2.7.1",
-    "typescript": "^5.4.2"
+    "typescript": "^5.7.2"
   },
   "lint-staged": {
     "*.@(js|ts|tsx)": [
