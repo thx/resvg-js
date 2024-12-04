@@ -39,6 +39,7 @@ export declare class Resvg {
   get width(): number
   /** Get the SVG height */
   get height(): number
+  free(): void
 }
 export declare class RenderedImage {
   /** Write the image data to Buffer */
@@ -49,4 +50,5 @@ export declare class RenderedImage {
   get width(): number
   /** Get the PNG height */
   get height(): number
+  free(): void
 }
