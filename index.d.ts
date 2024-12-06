@@ -5,6 +5,7 @@ export type ResvgRenderOptions = {
     loadSystemFonts?: boolean // Default: true, if set to false, it will be faster.
     fontFiles?: string[] // A list of local font file paths to load.
     fontDirs?: string[] // A list of local font directories to load.
+    preloadFonts?: boolean // Default: false. When enabled, font files will be read into memory at once to avoid frequent IO.
     defaultFontSize?: number // Default: 12
     defaultFontFamily?: string // Default: "", if `loadSystemFonts` is enabled, it will be set to the first font in the list of system fonts.
     serifFamily?: string
