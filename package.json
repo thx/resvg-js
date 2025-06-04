@@ -55,7 +55,7 @@
     "build": "napi build --platform --release --js js-binding.js --dts js-binding.d.ts",
     "build:debug": "napi build --platform --js js-binding.js --dts js-binding.d.ts",
     "build:wasm": "run-s build:wasm-web copy-wasm bundle",
-    "build:wasm-web": "wasm-pack build --target web --out-name index --out-dir wasm/dist --release",
+    "build:wasm-web": "RUSTFLAGS='-C target-feature=+simd128' wasm-pack build --target web --out-name index --out-dir wasm/dist --release",
     "copy-wasm": "copyfiles -f wasm/dist/index_bg.wasm ./wasm",
     "playground": "copyfiles -f playground/index.html ./wasm",
     "format": "run-p format:md format:json format:yaml format:source format:rs",
