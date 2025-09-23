@@ -388,11 +388,16 @@ var Resvg = class {
   /**
   * Use a given `BBox` to crop the svg. Currently this method simply changes
   * the viewbox/size of the svg and do not move the elements for simplicity
+  *
+  * # Arguments
+  * * `bbox` - The bounding box to crop to
+  * * `padding` - Optional bleed area around the crop box (default: 0.0)
   * @param {BBox} bbox
+  * @param {number | undefined} [padding]
   */
-  cropByBBox(bbox) {
+  cropByBBox(bbox, padding) {
     _assertClass(bbox, BBox);
-    wasm.resvg_cropByBBox(this.__wbg_ptr, bbox.__wbg_ptr);
+    wasm.resvg_cropByBBox(this.__wbg_ptr, bbox.__wbg_ptr, !isLikeNone(padding), isLikeNone(padding) ? 0 : padding);
   }
   /**
   * @returns {Array<any>}

@@ -31,8 +31,12 @@ export declare class Resvg {
   /**
    * Use a given `BBox` to crop the svg. Currently this method simply changes
    * the viewbox/size of the svg and do not move the elements for simplicity
+   *
+   * # Arguments
+   * * `bbox` - The bounding box to crop to
+   * * `padding` - Optional bleed area around the crop box (default: 0.0)
    */
-  cropByBBox(bbox: BBox): void
+  cropByBBox(bbox: BBox, padding?: number | undefined | null): void
   imagesToResolve(): Array<string>
   resolveImage(href: string, buffer: Buffer): void
   /** Get the SVG width */

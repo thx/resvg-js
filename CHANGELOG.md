@@ -9,6 +9,9 @@ This changelog also contains important changes in dependencies.
 
 ## [Unreleased]
 
+- Add `padding` parameter to `cropByBBox()` API to specify the bleed area around the bounding box. Default is `0`. Thanks to @yisibl.
+  This is similar to the padding property in CSS. If the width parameter is not specified, it will increase the width and height of the output image.
+
 ## [2.6.2] - 2024-03-26
 
 ### Fixed

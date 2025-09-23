@@ -23,7 +23,8 @@ async function main() {
 
   // const bbox = resvg.innerBBox()
   const bbox = resvg.getBBox()
-  if (bbox) resvg.cropByBBox(bbox)
+  if (bbox) resvg.cropByBBox(bbox, 0)
+
   const pngData = resvg.render()
   const pngBuffer = pngData.asPng()
 

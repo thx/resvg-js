@@ -235,14 +235,21 @@ impl Resvg {
     #[napi(js_name = cropByBBox)]
     /// Use a given `BBox` to crop the svg. Currently this method simply changes
     /// the viewbox/size of the svg and do not move the elements for simplicity
-    pub fn crop_by_bbox(&mut self, bbox: &BBox) {
+    ///
+    /// # Arguments
+    /// * `bbox` - The bounding box to crop to
+    /// * `padding` - Optional bleed area around the crop box (default: 0.0)
+    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
-        let width = bbox.width as f32;
-        let height = bbox.height as f32;
-        self.tree.view_box.rect =
-            usvg::NonZeroRect::from_xywh(bbox.x as f32, bbox.y as f32, width, height).unwrap();
+        let padding = padding.unwrap_or(0.0) as f32;
+        let x = (bbox.x as f32) - padding;
+        let y = (bbox.y as f32) - padding;
+        let width = (bbox.width as f32) + (padding * 2.0);
+        let height = (bbox.height as f32) + (padding * 2.0);
+
+        self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
         self.tree.size = usvg::Size::from_wh(width, height).unwrap();
     }
 
@@ -373,14 +380,21 @@ impl Resvg {
     #[wasm_bindgen(js_name = cropByBBox)]
     /// Use a given `BBox` to crop the svg. Currently this method simply changes
     /// the viewbox/size of the svg and do not move the elements for simplicity
-    pub fn crop_by_bbox(&mut self, bbox: &BBox) {
+    ///
+    /// # Arguments
+    /// * `bbox` - The bounding box to crop to
+    /// * `padding` - Optional bleed area around the crop box (default: 0.0)
+    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
-        let width = bbox.width as f32;
-        let height = bbox.height as f32;
-        self.tree.view_box.rect =
-            usvg::NonZeroRect::from_xywh(bbox.x as f32, bbox.y as f32, width, height).unwrap();
+        let padding = padding.unwrap_or(0.0) as f32;
+        let x = (bbox.x as f32) - padding;
+        let y = (bbox.y as f32) - padding;
+        let width = (bbox.width as f32) + (padding * 2.0);
+        let height = (bbox.height as f32) + (padding * 2.0);
+
+        self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
         self.tree.size = usvg::Size::from_wh(width, height).unwrap();
     }
 

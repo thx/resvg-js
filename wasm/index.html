@@ -269,6 +269,23 @@
           repeating-conic-gradient(#808080 0% 25%, transparent 0% 50%)
           50% / var(--chessboard-size) var(--chessboard-size);
     }
+
+    #bleed-size::-webkit-slider-thumb {
+        anchor-name: --foo;
+    }
+    #bleed-size:after {
+      content: attr(data-value);
+      position: absolute;
+      z-index: 999999;
+      font-size: 18px;
+      position-anchor: --foo;
+      position-area: top center;
+      background-color: #fff;
+      border: 1px solid #999;
+      border-radius: 4px;
+      padding: .25em .6em;
+      margin-bottom: 8px;
+    }
   </style>
   <script>
     const fontList = [
@@ -288,20 +305,7 @@
 
     const svgList = [{
       name: 'Hello resvg-js',
-      svgString: `<svg width="600" height="300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <defs>
-    <linearGradient x1="0%" y1="45%" x2="100%" y2="55%" id="b">
-      <stop stop-color="#FF8253" offset="0%"/>
-      <stop stop-color="#DA1BC6" offset="100%"/>
-    </linearGradient>
-    <path id="a" d="M0 0h600v300H0z"/>
-  </defs>
-  <g fill="none" fill-rule="evenodd">
-    <use fill="url(#b)" xlink:href="#a"/>
-    <text x="50%" y="39%" font-size="58" fill="#FFF" dominant-baseline="middle" text-anchor="middle">Hello resvg-js</text>
-    <text x="50%" y="62%" font-size="38" fill="#FFF" dominant-baseline="middle" text-anchor="middle">高性能 SVG 渲染引擎和工具包</text>
-  </g>
-</svg>`
+      svgString: `<svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="800.000000" height="800.000000" viewBox="0 0 800.000000 800.000000"><g transform="translate(0.000000,800.000000) scale(0.100000,-0.100000)" fill="#000000" stroke="none"><path d="M3770 6484 c-241 -29 -397 -62 -574 -121 -732 -242 -1303 -798 -1559 -1518 -103 -290 -142 -523 -141 -850 2 -409 78 -741 254 -1100 230 -470 595 -848 1051 -1089 261 -138 500 -216 824 -271 128 -22 462 -30 615 -16 783 76 1472 494 1885 1146 75 119 194 364 239 494 171 490 189 1021 52 1522 -19 69 -46 155 -60 189 -14 35 -26 67 -26 71 0 4 -24 59 -53 121 -125 264 -280 483 -491 693 -220 219 -393 344 -661 475 -236 115 -491 196 -745 236 -101 15 -525 28 -610 18z m515 -299 c345 -49 683 -173 955 -352 717 -471 1091 -1326 955 -2183 -141 -880 -782 -1570 -1659 -1786 -184 -45 -344 -64 -536 -64 -759 2 -1443 363 -1856 981 -190 285 -316 641 -355 1004 -14 134 -6 432 15 560 109 641 449 1160 992 1511 247 159 596 286 904 328 140 19 457 20 585 1z"/><path d="M3588 5860 c-248 -52 -453 -136 -654 -268 -116 -76 -146 -131 -110 -200 8 -15 203 -215 433 -444 l419 -418 45 0 c32 0 55 7 73 21 58 45 56 28 56 656 0 556 -1 579 -20 610 -39 65 -91 74 -242 43z"/><path d="M4221 5862 c-19 -10 -43 -34 -53 -53 -17 -31 -18 -71 -18 -602 0 -604 0 -608 49 -651 12 -11 42 -21 72 -24 l51 -5 419 419 c230 230 426 433 434 451 36 75 -4 135 -147 221 -192 116 -401 198 -617 241 -127 26 -147 26 -190 3z"/><path d="M2516 5180 c-41 -13 -79 -52 -141 -145 -135 -206 -256 -526 -272 -725 -5 -72 -4 -77 21 -107 15 -18 44 -37 64 -43 40 -11 1127 -15 1181 -4 37 8 87 56 94 91 12 61 -3 79 -436 511 -232 232 -430 422 -439 422 -9 0 -22 2 -30 4 -7 2 -26 0 -42 -4z"/><path d="M5405 5176 c-45 -21 -862 -845 -870 -878 -10 -40 12 -95 48 -120 l32 -23 580 -3 c379 -2 592 1 616 7 85 25 103 89 71 247 -42 202 -123 409 -234 592 -67 111 -120 169 -167 182 -44 12 -39 12 -76 -4z"/><path d="M2164 3831 c-72 -44 -79 -91 -40 -263 48 -208 139 -428 246 -593 93 -143 142 -179 213 -156 49 17 873 845 882 887 9 44 -17 99 -57 124 -32 19 -49 20 -623 20 -563 0 -591 -1 -621 -19z"/><path d="M4592 3830 c-40 -24 -66 -81 -58 -124 9 -46 846 -881 893 -891 64 -13 105 16 183 130 125 185 219 407 270 640 33 149 25 199 -39 242 l-34 23 -591 0 c-575 0 -592 -1 -624 -20z"/><path d="M3675 3460 c-11 -4 -208 -197 -437 -427 -458 -460 -450 -449 -412 -528 35 -74 310 -229 539 -304 112 -37 311 -81 363 -81 36 0 81 28 102 63 19 31 20 54 20 612 0 558 -1 581 -20 612 -32 53 -100 77 -155 53z"/><path d="M4212 3450 c-63 -39 -62 -31 -62 -656 0 -626 -1 -615 64 -655 41 -25 76 -24 215 7 214 47 400 119 573 220 156 91 209 163 174 235 -9 19 -202 220 -430 448 -403 403 -414 413 -457 418 -33 3 -52 -1 -77 -17z"/></g></svg>`
     },
     {
       name: 'GitHub Octocat',
@@ -384,11 +388,10 @@
         resvgOpts.font.fontBuffers = [buffer]
         fontList[0].buffer = buffer
       }
-      await svg2png(INIT_INPUT_SVG_STRING, resvgOpts)
+      await svg2png(INIT_INPUT_SVG_STRING, resvgOpts, false, 20)
 
-      async function svg2png(svgString, opts, hasCrop) {
+      async function svg2png(svgString, opts, hasCrop = false, bleedSize = 0) {
         const svg = svgString ? svgString : svgInputElement.value.trim()
-
         if (!svg) {
           alert('SVG is empty')
           return
@@ -413,10 +416,12 @@
           }
         }
 
-        const innerBBox = resvgJS.innerBBox()
+        // const innerBBox = resvgJS.innerBBox()
         const bbox = resvgJS.getBBox()
 
-        if (hasCrop && bbox) resvgJS.cropByBBox(bbox)
+        if (hasCrop && bbox) resvgJS.cropByBBox(bbox, bleedSize)
+        console.info('Simplified svg string \n', resvgJS.toString())
+
         const pngData = resvgJS.render()
         const pngBuffer = pngData.asPng()
 
@@ -430,6 +435,7 @@
       addMultipleEventListener(svgInputElement, ['change', 'keyup', 'paste'], async function (event) {
         SVG_STRING = event.target.value.trim()
         const hasCrop = cropElement.checked
+        const bleedSize = bleedSizeElement.value
         if (!SVG_STRING) return
 
         // 通过 svgString 更新 inputSvgElement
@@ -442,7 +448,7 @@
         }
 
         await checkGetFontBuffer()
-        svg2png(SVG_STRING, resvgOpts, hasCrop)
+        svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize)
       })
 
       function addMultipleEventListener(element, events, handler) {
@@ -453,6 +459,7 @@
       const colorPickerAlphaElement = document.querySelector('#color-picker-alpha')
       const svgSizeElement = document.querySelector('#svg-size')
       const cropElement = document.querySelector('#crop-by-bbox')
+      const bleedSizeElement = document.querySelector('#bleed-size')
       const svgSelectElement = document.querySelector('#slt-svg')
       const fontSelectElement = document.querySelector('#slt-font')
 
@@ -492,13 +499,16 @@
               },
             }
 
-            await svg2png(SVG_STRING, resvgOpts)
+            const hasCrop = cropElement.checked
+            const bleedSize = bleedSizeElement.value
+            await svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize)
           }
         }
       })
 
       function onChangeColor() {
         const hasCrop = cropElement.checked
+        const bleedSize = bleedSizeElement.value
         const style = window.getComputedStyle(document.querySelector('html'), ':before')
         const color = style.getPropertyValue('color')
         const rgb_color = convertColorToRGBA(color)
@@ -507,7 +517,7 @@
         console.info('convert to rgba()\n', rgb_color)
 
         resvgOpts.background = rgb_color
-        svg2png(null, resvgOpts, hasCrop)
+        svg2png(null, resvgOpts, hasCrop, bleedSize)
       }
 
       colorPickerElement.addEventListener('input', function (event) {
@@ -536,6 +546,7 @@
       svgSizeElement.addEventListener('change', function (event) {
         const value = event.target.value
         const hasCrop = cropElement.checked
+        const bleedSize = bleedSizeElement.value
         if (!value) {
           Object.assign(resvgOpts, {
             fitTo: {
@@ -557,12 +568,21 @@
           })
         }
 
-        svg2png(null, resvgOpts, hasCrop)
+        svg2png(null, resvgOpts, hasCrop, bleedSize)
       })
 
       cropElement.addEventListener('change', function (event) {
         const hasCrop = event.target.checked
-        svg2png(null, resvgOpts, hasCrop)
+        const bleedSize = bleedSizeElement.value
+        svg2png(null, resvgOpts, hasCrop, bleedSize)
+      })
+
+      bleedSizeElement.addEventListener('input', function (event) {
+        const value = event.target.value
+        event.target.setAttribute('data-value', value)
+        const hasCrop = cropElement.checked
+        const bleedSize = value
+        svg2png(null, resvgOpts, hasCrop, bleedSize)
       })
 
       async function checkGetFontBuffer() {
@@ -684,6 +704,10 @@
       <div class="opts-cell">
         <label for="crop-by-bbox">Crop by BBox:</label>
         <input type="checkbox" name="crop-by-bbox" id="crop-by-bbox">
+      </div>
+      <div class="opts-cell">
+        <label for="bleed-size">Bleed Size:</label>
+        <input type="range" name="bleed-size" id="bleed-size" min="0" max="1000" value="24" data-value="24">
       </div>
     </div>
     <div class="box">
