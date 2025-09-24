@@ -74,9 +74,10 @@ export class Resvg {
    * # Arguments
    * `bbox` - The bounding box to crop to
    * `padding` - Optional bleed area around the crop box (default: 0.0)
+   * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
    */
   // cropByBBox(bbox: BBox): void
-  cropByBBox(bbox: BBox, padding?: number): void
+  cropByBBox(bbox: BBox, padding?: number, square?: boolean): void
 
   imagesToResolve(): Array<string>
   resolveImage(href: string, buffer: Buffer): void

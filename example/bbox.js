@@ -23,7 +23,7 @@ async function main() {
 
   // const bbox = resvg.innerBBox()
   const bbox = resvg.getBBox()
-  if (bbox) resvg.cropByBBox(bbox, 0)
+  if (bbox) resvg.cropByBBox(bbox, 0, true /* crop to square */)
 
   const pngData = resvg.render()
   const pngBuffer = pngData.asPng()

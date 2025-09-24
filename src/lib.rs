@@ -239,18 +239,41 @@ impl Resvg {
     /// # Arguments
     /// * `bbox` - The bounding box to crop to
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
-    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>) {
+    /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
+    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
         let padding = padding.unwrap_or(0.0) as f32;
-        let x = (bbox.x as f32) - padding;
-        let y = (bbox.y as f32) - padding;
-        let width = (bbox.width as f32) + (padding * 2.0);
-        let height = (bbox.height as f32) + (padding * 2.0);
+        let square = square.unwrap_or(false);
 
-        self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
-        self.tree.size = usvg::Size::from_wh(width, height).unwrap();
+        let mut x = bbox.x as f32;
+        let mut y = bbox.y as f32;
+        let mut width = bbox.width as f32;
+        let mut height = bbox.height as f32;
+
+        // Make square if requested
+        if square && width != height {
+            let max_dimension = width.max(height);
+            let width_diff = max_dimension - width;
+            let height_diff = max_dimension - height;
+
+            // Adjust position to center the square
+            x -= width_diff / 2.0;
+            y -= height_diff / 2.0;
+            width = max_dimension;
+            height = max_dimension;
+        }
+
+        // Apply padding
+        let final_x = x - padding;
+        let final_y = y - padding;
+        let final_width = width + (padding * 2.0);
+        let final_height = height + (padding * 2.0);
+
+        self.tree.view_box.rect =
+            usvg::NonZeroRect::from_xywh(final_x, final_y, final_width, final_height).unwrap();
+        self.tree.size = usvg::Size::from_wh(final_width, final_height).unwrap();
     }
 
     #[napi]
@@ -384,18 +407,41 @@ impl Resvg {
     /// # Arguments
     /// * `bbox` - The bounding box to crop to
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
-    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>) {
+    /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
+    pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
         let padding = padding.unwrap_or(0.0) as f32;
-        let x = (bbox.x as f32) - padding;
-        let y = (bbox.y as f32) - padding;
-        let width = (bbox.width as f32) + (padding * 2.0);
-        let height = (bbox.height as f32) + (padding * 2.0);
+        let square = square.unwrap_or(false);
 
-        self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
-        self.tree.size = usvg::Size::from_wh(width, height).unwrap();
+        let mut x = bbox.x as f32;
+        let mut y = bbox.y as f32;
+        let mut width = bbox.width as f32;
+        let mut height = bbox.height as f32;
+
+        // Make square if requested
+        if square && width != height {
+            let max_dimension = width.max(height);
+            let width_diff = max_dimension - width;
+            let height_diff = max_dimension - height;
+
+            // Adjust position to center the square
+            x -= width_diff / 2.0;
+            y -= height_diff / 2.0;
+            width = max_dimension;
+            height = max_dimension;
+        }
+
+        // Apply padding
+        let final_x = x - padding;
+        let final_y = y - padding;
+        let final_width = width + (padding * 2.0);
+        let final_height = height + (padding * 2.0);
+
+        self.tree.view_box.rect =
+            usvg::NonZeroRect::from_xywh(final_x, final_y, final_width, final_height).unwrap();
+        self.tree.size = usvg::Size::from_wh(final_width, final_height).unwrap();
     }
 
     #[wasm_bindgen(js_name = imagesToResolve)]

@@ -388,9 +388,9 @@
         resvgOpts.font.fontBuffers = [buffer]
         fontList[0].buffer = buffer
       }
-      await svg2png(INIT_INPUT_SVG_STRING, resvgOpts, false, 20)
+      await svg2png(INIT_INPUT_SVG_STRING, resvgOpts, false, 20, false)
 
-      async function svg2png(svgString, opts, hasCrop = false, bleedSize = 0) {
+      async function svg2png(svgString, opts, hasCrop = false, bleedSize = 0, square = false) {
         const svg = svgString ? svgString : svgInputElement.value.trim()
         if (!svg) {
           alert('SVG is empty')
@@ -419,7 +419,7 @@
         // const innerBBox = resvgJS.innerBBox()
         const bbox = resvgJS.getBBox()
 
-        if (hasCrop && bbox) resvgJS.cropByBBox(bbox, bleedSize)
+        if (hasCrop && bbox) resvgJS.cropByBBox(bbox, bleedSize, square)
         console.info('Simplified svg string \n', resvgJS.toString())
 
         const pngData = resvgJS.render()
@@ -435,6 +435,7 @@
       addMultipleEventListener(svgInputElement, ['change', 'keyup', 'paste'], async function (event) {
         SVG_STRING = event.target.value.trim()
         const hasCrop = cropElement.checked
+        const square = squareElement.checked
         const bleedSize = bleedSizeElement.value
         if (!SVG_STRING) return
 
@@ -448,7 +449,7 @@
         }
 
         await checkGetFontBuffer()
-        svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize)
+        svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize, square)
       })
 
       function addMultipleEventListener(element, events, handler) {
@@ -459,6 +460,7 @@
       const colorPickerAlphaElement = document.querySelector('#color-picker-alpha')
       const svgSizeElement = document.querySelector('#svg-size')
       const cropElement = document.querySelector('#crop-by-bbox')
+      const squareElement = document.querySelector('#crop-as-square')
       const bleedSizeElement = document.querySelector('#bleed-size')
       const svgSelectElement = document.querySelector('#slt-svg')
       const fontSelectElement = document.querySelector('#slt-font')
@@ -500,14 +502,16 @@
             }
 
             const hasCrop = cropElement.checked
+            const square = squareElement.checked
             const bleedSize = bleedSizeElement.value
-            await svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize)
+            await svg2png(SVG_STRING, resvgOpts, hasCrop, bleedSize, square)
           }
         }
       })
 
       function onChangeColor() {
         const hasCrop = cropElement.checked
+        const square = squareElement.checked
         const bleedSize = bleedSizeElement.value
         const style = window.getComputedStyle(document.querySelector('html'), ':before')
         const color = style.getPropertyValue('color')
@@ -517,7 +521,7 @@
         console.info('convert to rgba()\n', rgb_color)
 
         resvgOpts.background = rgb_color
-        svg2png(null, resvgOpts, hasCrop, bleedSize)
+        svg2png(null, resvgOpts, hasCrop, bleedSize, square)
       }
 
       colorPickerElement.addEventListener('input', function (event) {
@@ -546,6 +550,7 @@
       svgSizeElement.addEventListener('change', function (event) {
         const value = event.target.value
         const hasCrop = cropElement.checked
+        const square = squareElement.checked
         const bleedSize = bleedSizeElement.value
         if (!value) {
           Object.assign(resvgOpts, {
@@ -568,21 +573,30 @@
           })
         }
 
-        svg2png(null, resvgOpts, hasCrop, bleedSize)
+        svg2png(null, resvgOpts, hasCrop, bleedSize, square)
       })
 
       cropElement.addEventListener('change', function (event) {
         const hasCrop = event.target.checked
+        const square = squareElement.checked
         const bleedSize = bleedSizeElement.value
-        svg2png(null, resvgOpts, hasCrop, bleedSize)
+        svg2png(null, resvgOpts, hasCrop, bleedSize, square)
+      })
+
+      squareElement.addEventListener('change', function (event) {
+        const hasCrop = cropElement.checked
+        const square = event.target.checked
+        const bleedSize = bleedSizeElement.value
+        svg2png(null, resvgOpts, hasCrop, bleedSize, square)
       })
 
       bleedSizeElement.addEventListener('input', function (event) {
         const value = event.target.value
         event.target.setAttribute('data-value', value)
         const hasCrop = cropElement.checked
+        const square = squareElement.checked
         const bleedSize = value
-        svg2png(null, resvgOpts, hasCrop, bleedSize)
+        svg2png(null, resvgOpts, hasCrop, bleedSize, square)
       })
 
       async function checkGetFontBuffer() {
@@ -704,6 +718,10 @@
       <div class="opts-cell">
         <label for="crop-by-bbox">Crop by BBox:</label>
         <input type="checkbox" name="crop-by-bbox" id="crop-by-bbox">
+      </div>
+      <div class="opts-cell">
+        <label for="crop-as-square">Square Crop:</label>
+        <input type="checkbox" name="crop-as-square" id="crop-as-square">
       </div>
       <div class="opts-cell">
         <label for="bleed-size">Bleed Size:</label>

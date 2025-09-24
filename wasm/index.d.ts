@@ -98,7 +98,7 @@ export declare const Resvg: {
 		toString(): string;
 		innerBBox(): BBox | undefined;
 		getBBox(): BBox | undefined;
-		cropByBBox(bbox: BBox, padding?: number | undefined): void;
+		cropByBBox(bbox: BBox, padding?: number | undefined, square?: boolean | undefined): void;
 		imagesToResolve(): any[];
 		resolveImage(href: string, buffer: Uint8Array): void;
 		readonly height: number;

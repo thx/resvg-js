@@ -392,12 +392,14 @@ var Resvg = class {
   * # Arguments
   * * `bbox` - The bounding box to crop to
   * * `padding` - Optional bleed area around the crop box (default: 0.0)
+  * * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
   * @param {BBox} bbox
   * @param {number | undefined} [padding]
+  * @param {boolean | undefined} [square]
   */
-  cropByBBox(bbox, padding) {
+  cropByBBox(bbox, padding, square) {
     _assertClass(bbox, BBox);
-    wasm.resvg_cropByBBox(this.__wbg_ptr, bbox.__wbg_ptr, !isLikeNone(padding), isLikeNone(padding) ? 0 : padding);
+    wasm.resvg_cropByBBox(this.__wbg_ptr, bbox.__wbg_ptr, !isLikeNone(padding), isLikeNone(padding) ? 0 : padding, isLikeNone(square) ? 16777215 : square ? 1 : 0);
   }
   /**
   * @returns {Array<any>}
