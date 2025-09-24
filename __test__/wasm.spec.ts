@@ -12,7 +12,10 @@ import { jimpToRgbaPixels } from './helper'
 
 // Init Wasm
 test.before(async () => {
-  await initWasm(fs.readFile(join(__dirname, '../wasm/index_bg.wasm')))
+  const file = await fs.readFile(join(__dirname, '../wasm/index_bg.wasm'))
+  await initWasm(file)
+  //  暂时锁定 wasm-bindgen 版本，后面的 API 有较大变动：https://github.com/wasm-bindgen/wasm-bindgen/pull/3995#issuecomment-2295178639
+  // await initWasm({ module_or_path: file })
 })
 
 test.skip('Use href to load a JPG image without alpha', async (t) => {

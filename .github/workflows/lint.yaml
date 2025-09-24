@@ -20,11 +20,19 @@ jobs:
         with:
           node-version: 16
 
-      - name: Install
-        uses: actions-rs/toolchain@v1
+      - name: Rustup toolchain version
+        shell: bash
+        id: rustup-version
+        run: |
+          export RUST_TOOLCHAIN_VERSION="$(grep 'channel' rust-toolchain.toml | head -1 | awk -F '"' '{print $2}')"
+          echo "Rust toolchain version: $RUST_TOOLCHAIN_VERSION"
+          echo "RUST_TOOLCHAIN_VERSION=$RUST_TOOLCHAIN_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        if: ${{ !matrix.settings.docker }}
         with:
-          profile: minimal
-          override: true
+          toolchain: ${{ steps.rustup-version.outputs.RUST_TOOLCHAIN_VERSION }}
+          targets: ${{ matrix.settings.target }}
           components: rustfmt, clippy
 
       - name: Cache NPM dependencies

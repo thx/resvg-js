@@ -30,7 +30,8 @@ mimalloc = "0.1"
 mimalloc = { version = "0.1", features = ["local_dynamic_tls"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2.87"
+# 暂时锁定 wasm-bindgen 版本，禁用 reference-types，Node.js 16 不支持。后面的 API 有较大变动：https://github.com/wasm-bindgen/wasm-bindgen/pull/3995#issuecomment-2295178639
+wasm-bindgen = "=0.2.92"
 js-sys = "0.3.64"
 resvg = { version = "0.34.0", default-features = false, features = [
     "raster-images",
