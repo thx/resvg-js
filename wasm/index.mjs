@@ -4,8 +4,7 @@ var heap = new Array(128).fill(void 0);
 heap.push(void 0, null, true, false);
 var heap_next = heap.length;
 function addHeapObject(obj) {
-  if (heap_next === heap.length)
-    heap.push(heap.length + 1);
+  if (heap_next === heap.length) heap.push(heap.length + 1);
   const idx = heap_next;
   heap_next = heap[idx];
   heap[idx] = obj;
@@ -15,8 +14,7 @@ function getObject(idx) {
   return heap[idx];
 }
 function dropObject(idx) {
-  if (idx < 132)
-    return;
+  if (idx < 132) return;
   heap[idx] = heap_next;
   heap_next = idx;
 }
@@ -60,8 +58,7 @@ function passStringToWasm0(arg, malloc, realloc) {
   let offset = 0;
   for (; offset < len; offset++) {
     const code = arg.charCodeAt(offset);
-    if (code > 127)
-      break;
+    if (code > 127) break;
     mem[ptr + offset] = code;
   }
   if (offset !== len) {
@@ -528,8 +525,7 @@ function __wbg_finalize_init(instance, module) {
   return wasm;
 }
 async function __wbg_init(input) {
-  if (wasm !== void 0)
-    return wasm;
+  if (wasm !== void 0) return wasm;
   if (typeof input === "undefined") {
     input = new URL("index_bg.wasm", void 0);
   }
@@ -558,8 +554,7 @@ var Resvg2 = class extends Resvg {
    * @param {ResvgRenderOptions | undefined} options
    */
   constructor(svg, options) {
-    if (!initialized)
-      throw new Error("Wasm has not been initialized. Call `initWasm()` function.");
+    if (!initialized) throw new Error("Wasm has not been initialized. Call `initWasm()` function.");
     const font = options?.font;
     if (!!font && isCustomFontsOptions(font)) {
       const serializableOptions = {

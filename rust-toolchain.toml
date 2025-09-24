@@ -1,0 +1,4 @@
+# Use `rustup show` to view the currently installed version.
+[toolchain]
+channel = "1.86.0"
+profile = "default"

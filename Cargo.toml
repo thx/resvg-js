@@ -19,7 +19,7 @@ thiserror = "1.0.37"
 png = "=0.17.5"
 pathfinder_geometry = "0.5.1"
 pathfinder_content = { version = "0.5.0", default-features = false }
-pathfinder_simd = { version = "=0.5.2", features = ["pf-no-simd"] }
+pathfinder_simd = { version = "=0.5.5", features = ["pf-no-simd"] }
 futures = "0.3.21"
 woff2 = "0.3.0"
 
@@ -38,8 +38,8 @@ resvg = { version = "0.34.0", default-features = false, features = [
 ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-napi = { version = "2.16.0", features = ["serde-json", "async"] }
-napi-derive = "2.16.0"
+napi = { version = "2.16.17", features = ["serde-json", "async"] }
+napi-derive = "2.16.13"
 resvg = { version = "0.34.0", default-features = false, features = [
     "raster-images",
     "text",
