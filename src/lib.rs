@@ -238,13 +238,13 @@ impl Resvg {
     ///
     /// # Arguments
     /// * `bbox` - The bounding box to crop to
-    /// * `padding` - Optional bleed area around the crop box (default: 0.0)
+    /// * `padding` - Optional bleed area around the crop box in pixels (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
-        let padding = padding.unwrap_or(0.0) as f32;
+        let padding_pixels = padding.unwrap_or(0.0);
         let square = square.unwrap_or(false);
 
         let mut x = bbox.x as f32;
@@ -265,11 +265,26 @@ impl Resvg {
             height = max_dimension;
         }
 
-        // Apply padding
-        let final_x = x - padding;
-        let final_y = y - padding;
-        let final_width = width + (padding * 2.0);
-        let final_height = height + (padding * 2.0);
+        // Calculate the scale factor that will be applied during rendering
+        // We need to convert pixel-based padding to SVG coordinate system padding
+        let scale_factor = match self.js_options.fit_to {
+            crate::options::FitToDef::Original => 1.0,
+            crate::options::FitToDef::Width(w) => w as f32 / self.tree.size.width(),
+            crate::options::FitToDef::Height(h) => h as f32 / self.tree.size.height(),
+            crate::options::FitToDef::Zoom(s) => s,
+        };
+
+        // Convert pixel padding to SVG coordinate padding by dividing by the scale factor
+        // This ensures that the padding remains consistent in pixels regardless of scaling
+        let svg_padding = (scale_factor > 0.0)
+            .then(|| (padding_pixels as f32) / scale_factor)
+            .unwrap_or(0.0);
+
+        // Apply padding in SVG coordinate system
+        let final_x = x - svg_padding;
+        let final_y = y - svg_padding;
+        let final_width = width + (svg_padding * 2.0);
+        let final_height = height + (svg_padding * 2.0);
 
         self.tree.view_box.rect =
             usvg::NonZeroRect::from_xywh(final_x, final_y, final_width, final_height).unwrap();
@@ -406,13 +421,13 @@ impl Resvg {
     ///
     /// # Arguments
     /// * `bbox` - The bounding box to crop to
-    /// * `padding` - Optional bleed area around the crop box (default: 0.0)
+    /// * `padding` - Optional bleed area around the crop box in pixels (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
         if !bbox.width.is_finite() || !bbox.height.is_finite() {
             return;
         }
-        let padding = padding.unwrap_or(0.0) as f32;
+        let padding_pixels = padding.unwrap_or(0.0);
         let square = square.unwrap_or(false);
 
         let mut x = bbox.x as f32;
@@ -433,11 +448,26 @@ impl Resvg {
             height = max_dimension;
         }
 
-        // Apply padding
-        let final_x = x - padding;
-        let final_y = y - padding;
-        let final_width = width + (padding * 2.0);
-        let final_height = height + (padding * 2.0);
+        // Calculate the scale factor that will be applied during rendering
+        // We need to convert pixel-based padding to SVG coordinate system padding
+        let scale_factor = match self.js_options.fit_to {
+            crate::options::FitToDef::Original => 1.0,
+            crate::options::FitToDef::Width(w) => w as f32 / self.tree.size.width(),
+            crate::options::FitToDef::Height(h) => h as f32 / self.tree.size.height(),
+            crate::options::FitToDef::Zoom(s) => s,
+        };
+
+        // Convert pixel padding to SVG coordinate padding by dividing by the scale factor
+        // This ensures that the padding remains consistent in pixels regardless of scaling
+        let svg_padding = (scale_factor > 0.0)
+            .then(|| (padding_pixels as f32) / scale_factor)
+            .unwrap_or(0.0);
+
+        // Apply padding in SVG coordinate system
+        let final_x = x - svg_padding;
+        let final_y = y - svg_padding;
+        let final_width = width + (svg_padding * 2.0);
+        let final_height = height + (svg_padding * 2.0);
 
         self.tree.view_box.rect =
             usvg::NonZeroRect::from_xywh(final_x, final_y, final_width, final_height).unwrap();

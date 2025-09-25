@@ -420,6 +420,7 @@
         const bbox = resvgJS.getBBox()
 
         if (hasCrop && bbox) resvgJS.cropByBBox(bbox, bleedSize, square)
+        console.info('bbox', bbox)
         console.info('Simplified svg string \n', resvgJS.toString())
 
         const pngData = resvgJS.render()
@@ -725,7 +726,7 @@
       </div>
       <div class="opts-cell">
         <label for="bleed-size">Bleed Size:</label>
-        <input type="range" name="bleed-size" id="bleed-size" min="0" max="1000" value="24" data-value="24">
+        <input type="range" name="bleed-size" id="bleed-size" step="10" min="0" max="1000" value="144" data-value="144">
       </div>
     </div>
     <div class="box">

@@ -364,7 +364,7 @@ var Resvg = class {
   *
   * # Arguments
   * * `bbox` - The bounding box to crop to
-  * * `padding` - Optional bleed area around the crop box (default: 0.0)
+  * * `padding` - Optional bleed area around the crop box in pixels (default: 0.0)
   * * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
   * @param {BBox} bbox
   * @param {number | undefined} [padding]
