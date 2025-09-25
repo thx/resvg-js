@@ -579,6 +579,95 @@ test('should get svg bbox(rect) and cropByBBox', async (t) => {
   }
 })
 
+test('should cropByBBox only with padding', async (t) => {
+  const bbox_width = 300
+  const padding = 10
+  let expectedWidth = bbox_width - padding * 2
+  expectedWidth = expectedWidth < 0 ? 0 : expectedWidth
+  const origin_svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+    <rect width="300" height="300" x="100" y="150" fill="green"/></svg>`
+  const extened_svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${bbox_width}" height="${bbox_width}" viewBox="0 0 ${bbox_width} ${bbox_width}">
+    <rect width="${expectedWidth}" height="${expectedWidth}" x="${padding}" y="${padding}" fill="green"/></svg>`
+  console.info('extened_svg \n', extened_svg)
+
+  const resvg = new Resvg(origin_svg)
+  const bbox = resvg.getBBox()
+  t.not(bbox, undefined)
+
+  let result: jimp
+  if (bbox) {
+    resvg.cropByBBox(bbox, padding) // Add padding
+    const pngData = resvg.render()
+    const pngBuffer = pngData.asPng()
+    result = await jimp.read(pngBuffer)
+
+    t.is(bbox.width, bbox_width)
+    t.is(bbox.height, bbox_width)
+
+    // Must be have Alpha
+    t.is(result.hasAlpha(), true)
+    t.is(result.getWidth(), bbox_width)
+    t.is(result.getHeight(), bbox_width)
+  }
+
+  const extened_render = new Resvg(extened_svg)
+  const extened_pngData = extened_render.render()
+  const extened_pngBuffer = extened_pngData.asPng()
+  const extened_result = await jimp.read(extened_pngBuffer)
+
+  t.is(extened_result.getWidth(), bbox_width)
+  t.is(extened_result.getHeight(), bbox_width)
+  // Compare the two images
+  t.is(jimp.diff(result, extened_result, 0.01).percent, 0) // 0 means similar, 1 means not similar
+})
+
+test('should cropByBBox with fitTo and padding', async (t) => {
+  const w = 500
+  const padding = 50
+  let expectedWidth = w - padding * 2
+  expectedWidth = expectedWidth < 0 ? 0 : expectedWidth
+  const origin_svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+    <rect width="300" height="300" x="100" y="150" fill="red"/></svg>`
+  const extened_svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${w}" viewBox="0 0 ${w} ${w}">
+    <rect width="${expectedWidth}" height="${expectedWidth}" x="${padding}" y="${padding}" fill="red"/></svg>`
+  console.info('extened_svg \n', extened_svg)
+
+  const resvg = new Resvg(origin_svg, {
+    fitTo: {
+      mode: 'width', // TODO: test mode 'zoom'
+      value: w,
+    },
+  })
+  const bbox = resvg.getBBox()
+  t.not(bbox, undefined)
+
+  let result: jimp
+  if (bbox) {
+    resvg.cropByBBox(bbox, padding) // Add padding
+    const pngData = resvg.render()
+    const pngBuffer = pngData.asPng()
+    result = await jimp.read(pngBuffer)
+
+    t.is(bbox.width, 300)
+    t.is(bbox.height, 300)
+
+    // Must be have Alpha
+    t.is(result.hasAlpha(), true)
+    t.is(result.getWidth(), w)
+    t.is(result.getHeight(), w)
+  }
+
+  const extened_render = new Resvg(extened_svg)
+  const extened_pngData = extened_render.render()
+  const extened_pngBuffer = extened_pngData.asPng()
+  const extened_result = await jimp.read(extened_pngBuffer)
+
+  t.is(extened_result.getWidth(), w)
+  t.is(extened_result.getHeight(), w)
+  // Compare the two images
+  t.is(jimp.diff(result, extened_result, 0.01).percent, 0) // 0 means similar, 1 means not similar
+})
+
 test('should return undefined if bbox is invalid', (t) => {
   const svg = `<svg width="300px" height="300px" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg"></svg>`
   const resvg = new Resvg(svg)
