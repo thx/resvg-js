@@ -1,6 +1,6 @@
 # resvg-js
 
-<a href="https://github.com/yisibl/resvg-js/actions"><img alt="GitHub CI Status" src="https://github.com/yisibl/resvg-js/workflows/CI/badge.svg?branch=main"></a>
+<a href="https://github.com/yisibl/resvg-js/actions/workflows/CI.yaml?query=event%3Apush+branch%3Amain"><img alt="GitHub CI Status" src="https://github.com/thx/resvg-js/actions/workflows/CI.yaml/badge.svg?branch=main"></a>
 <a href="https://www.npmjs.com/package/@resvg/resvg-js"><img src="https://img.shields.io/npm/v/@resvg/resvg-js.svg?sanitize=true" alt="@resvg/resvg-js npm version"></a>
 <a href="https://npmcharts.com/compare/@resvg/resvg-js?minimal=true"><img src="https://img.shields.io/npm/dm/@resvg/resvg-js.svg?sanitize=true" alt="@resvg/resvg-js downloads"></a>
 [![Rust 1.65+](https://img.shields.io/badge/rust-1.65+-orange.svg)](https://www.rust-lang.org)
