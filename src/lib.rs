@@ -131,6 +131,12 @@ impl RenderedImage {
     pub fn height(&self) -> u32 {
         self.pix.height()
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[napi]
+    pub fn free(&mut self) {
+        self.pix = Pixmap::new(1, 1).expect("Failed to create empty Pixmap");
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -391,6 +397,21 @@ impl Resvg {
     #[napi(getter)]
     pub fn height(&self) -> f32 {
         self.tree.size.height().round()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[napi]
+    pub fn free(&mut self) {
+        self.tree = usvg::Tree {
+            size: usvg::Size::from_wh(1.0, 1.0).unwrap(),
+            view_box: usvg::ViewBox {
+                rect: usvg::NonZeroRect::from_ltrb(0.0, 0.0, 1.0, 1.0).unwrap(),
+                aspect: usvg::AspectRatio::default(),
+            },
+            root: usvg::Node::new(usvg::NodeKind::Group(usvg::Group::default())),
+        };
+
+        self.js_options = JsOptions::default();
     }
 }
 
