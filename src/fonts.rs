@@ -17,23 +17,62 @@ use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use woff2::decode::{convert_woff2_to_ttf, is_woff2};
 
+#[cfg(not(target_arch = "wasm32"))]
+fn load_font_buffer(path: impl AsRef<std::path::Path>) -> Option<Vec<u8>> {
+    match std::fs::read(path.as_ref()) {
+        Ok(buffer) => Some(buffer),
+        Err(e) => {
+            warn!(
+                "Failed to read font file '{}' cause {}.",
+                path.as_ref().display(),
+                e
+            );
+            None
+        }
+    }
+}
+
 /// Loads fonts.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_fonts(font_options: &JsFontOptions) -> Database {
-    // Create a new font database
     let mut fontdb = Database::new();
     let now = std::time::Instant::now();
 
-    // 加载指定路径的字体
-    for path in &font_options.font_files {
-        if let Err(e) = fontdb.load_font_file(path) {
-            warn!("Failed to load '{}' cause {}.", path, e);
-        }
-    }
+    if font_options.preload_fonts {
+        // 预加载单个字体文件
+        font_options
+            .font_files
+            .iter()
+            .filter_map(load_font_buffer)
+            .for_each(|buffer| {
+                let _ = fontdb.load_font_data(buffer);
+            });
 
-    // Load font directories
-    for path in &font_options.font_dirs {
-        fontdb.load_fonts_dir(path);
+        // 预加载字体目录
+        for dir in &font_options.font_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                entries
+                    .filter_map(Result::ok)
+                    .filter_map(|entry| entry.path().canonicalize().ok())
+                    .filter(|path| path.is_file())
+                    .filter_map(load_font_buffer)
+                    .for_each(|buffer| {
+                        let _ = fontdb.load_font_data(buffer);
+                    });
+            }
+        }
+    } else {
+        // 默认模式: 直接传递文件路径
+        for path in &font_options.font_files {
+            if let Err(e) = fontdb.load_font_file(path) {
+                warn!("Failed to load '{}' cause {}.", path, e);
+            }
+        }
+
+        // Load font directories
+        for path in &font_options.font_dirs {
+            fontdb.load_fonts_dir(path);
+        }
     }
 
     // 加载系统字体

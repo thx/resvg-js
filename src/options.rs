@@ -238,6 +238,12 @@ pub struct JsFontOptions {
     /// A list of local font directories to load.
     pub font_dirs: Vec<String>,
 
+    /// Whether to preload font files into memory to improve performance.
+    /// When enabled, font files will be read into memory at once to avoid frequent IO.
+    ///
+    /// Default: false
+    pub preload_fonts: bool,
+
     /// The default font family.
     ///
     /// Will be used when no `font-family` attribute is set in the SVG.
@@ -284,6 +290,7 @@ impl Default for JsFontOptions {
             load_system_fonts: true,
             font_files: vec![],
             font_dirs: vec![],
+            preload_fonts: false,
             default_font_family: "".to_string(),
             default_font_size: 12.0,
             serif_family: "Times New Roman".to_string(),
