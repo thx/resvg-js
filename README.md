@@ -194,6 +194,30 @@ This package also ships a pure WebAssembly artifact built with `wasm-bindgen` to
 
 See [playground](wasm/index.html), it is also possible to [call Wasm in Node.js](example/wasm-node.js), but it is slower.
 
+## Image Resolution Options
+
+### Relative Path Support
+
+Relative paths in `<image>` tags can now be resolved through the `imageResolving` option in both the WASM and Node.js builds:
+
+```javascript
+const resvg = new Resvg(svg, {
+  imageResolving: {
+    enableRelativePaths: true,
+    baseUrl: 'https://example.com/assets/',
+  },
+})
+
+// Now relative paths will be resolved
+const images = resvg.imagesToResolve()
+// './logo.png' becomes 'https://example.com/assets/logo.png'
+```
+
+#### Important Notes
+
+- This feature is **disabled by default** to maintain backward compatibility
+- The `baseUrl` is required when `enableRelativePaths` is true
+
 ## Sample Benchmark
 
 ```shell

@@ -22,6 +22,7 @@ pathfinder_content = { version = "0.5.0", default-features = false }
 pathfinder_simd = { version = "=0.5.5", features = ["pf-no-simd"] }
 futures = "0.3.21"
 woff2 = "0.3.0"
+url = "<2.5"
 
 [target.'cfg(not(any(target_os = "linux", target_family = "wasm")))'.dependencies]
 mimalloc = "0.1"

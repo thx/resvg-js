@@ -153,7 +153,7 @@ impl Resvg {
             .try_init();
 
         let (mut opts, fontdb) = js_options.to_usvg_options();
-        options::tweak_usvg_options(&mut opts);
+        options::tweak_usvg_options(&mut opts, &js_options);
         // Parse the SVG string into a tree.
         let mut tree = match svg {
             Either::A(a) => usvg::Tree::from_str(a.as_str(), &opts),
@@ -411,7 +411,7 @@ impl Resvg {
 
         crate::fonts::load_wasm_fonts(&js_options.font, custom_font_buffers, &mut fontdb)?;
 
-        options::tweak_usvg_options(&mut opts);
+        options::tweak_usvg_options(&mut opts, &js_options);
         let mut tree = if js_sys::Uint8Array::instanceof(&svg) {
             let uintarray = js_sys::Uint8Array::unchecked_from_js_ref(&svg);
             let svg_buffer = uintarray.to_vec();

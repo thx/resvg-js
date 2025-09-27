@@ -67,6 +67,17 @@ export type ResvgRenderOptions = {
 		right?: number;
 		bottom?: number;
 	};
+	/**
+	 * Log level for internal diagnostics
+	 */
+	logLevel?: "off" | "error" | "warn" | "info" | "debug" | "trace";
+	/**
+	 * Options for resolving image hrefs, including safe relative path support
+	 */
+	imageResolving?: {
+		enableRelativePaths?: boolean;
+		baseUrl?: string;
+	};
 };
 export type FontOptions = {
 	defaultFontSize?: number; // Default: 12

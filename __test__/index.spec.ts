@@ -676,6 +676,175 @@ test('should return undefined if bbox is invalid', (t) => {
   t.is(resvg.innerBBox(), undefined)
 })
 
+test('default behavior unchanged - relative paths ignored (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="./image.png"/></svg>`
+  const resvg = new Resvg(svg)
+  t.is(resvg.imagesToResolve().length, 0)
+})
+
+test('absolute URLs work without any options (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/image.png"/></svg>`
+  const resvg = new Resvg(svg)
+  t.is(resvg.imagesToResolve()[0], 'https://example.com/image.png')
+})
+
+test('relative path resolution with imageResolving option (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="./image.png"/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      baseUrl: 'https://example.com/assets/',
+    },
+  })
+
+  const images = resvg.imagesToResolve()
+  t.is(images[0], 'https://example.com/assets/image.png')
+})
+
+test('relative paths remain ignored when enableRelativePaths is false (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="./image.png"/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: false,
+      baseUrl: 'https://example.com/',
+    },
+  })
+
+  t.is(resvg.imagesToResolve().length, 0)
+})
+
+test('multiple relative paths resolved correctly (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg">
+    <image href="./logo.png"/>
+    <image href="icons/arrow.svg"/>
+    <image href="https://example.com/absolute.png"/>
+  </svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      baseUrl: 'https://example.com/assets/',
+    },
+  })
+
+  const images = resvg.imagesToResolve()
+  t.is(images.length, 3)
+  t.is(images[0], 'https://example.com/assets/logo.png')
+  t.is(images[1], 'https://example.com/assets/icons/arrow.svg')
+  t.is(images[2], 'https://example.com/absolute.png')
+})
+
+test('blocks path traversal attempts (Node)', (t) => {
+  const maliciousUrls = [
+    '../../../etc/passwd',
+    '..\\..\\windows\\system32',
+    '//evil.com/hack',
+    '%2e%2e%2fetc%2fpasswd',
+    '%2E%2E%2Fetc%2Fpasswd',
+    'foo/../../../bar',
+  ]
+
+  for (const url of maliciousUrls) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="${url}"/></svg>`
+    const resvg = new Resvg(svg, {
+      imageResolving: {
+        enableRelativePaths: true,
+        baseUrl: 'https://example.com/',
+      },
+    })
+
+    t.is(resvg.imagesToResolve().length, 0, `Should block: ${url}`)
+  }
+})
+
+test('blocks absolute paths (Node)', (t) => {
+  const absolutePaths = ['/etc/passwd', '/root/.ssh/id_rsa', '\\windows\\system32\\config']
+
+  for (const path of absolutePaths) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="${path}"/></svg>`
+    const resvg = new Resvg(svg, {
+      imageResolving: {
+        enableRelativePaths: true,
+        baseUrl: 'https://example.com/',
+      },
+    })
+
+    t.is(resvg.imagesToResolve().length, 0, `Should block absolute path: ${path}`)
+  }
+})
+
+test('preserves absolute URLs for caller validation (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="http://evil.com/steal"/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      baseUrl: 'https://example.com/',
+    },
+  })
+
+  const images = resvg.imagesToResolve()
+  t.is(images[0], 'http://evil.com/steal')
+})
+
+test('handles missing baseUrl gracefully (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="./image.png"/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      // baseUrl is intentionally omitted
+    },
+  })
+
+  t.is(resvg.imagesToResolve().length, 0)
+})
+
+test('preserves protocol in resolved URLs (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="./image.png"/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      baseUrl: 'https://example.com/assets/',
+    },
+  })
+
+  const images = resvg.imagesToResolve()
+  t.true(images[0].startsWith('https://'))
+})
+
+test('handles complex relative paths correctly (Node)', (t) => {
+  const testCases = [
+    { href: 'image.png', expected: 'https://example.com/assets/image.png' },
+    { href: './image.png', expected: 'https://example.com/assets/image.png' },
+    { href: 'subdir/image.png', expected: 'https://example.com/assets/subdir/image.png' },
+    { href: './subdir/image.png', expected: 'https://example.com/assets/subdir/image.png' },
+  ]
+
+  for (const { href, expected } of testCases) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="${href}"/></svg>`
+    const resvg = new Resvg(svg, {
+      imageResolving: {
+        enableRelativePaths: true,
+        baseUrl: 'https://example.com/assets/',
+      },
+    })
+
+    const images = resvg.imagesToResolve()
+    t.is(images[0], expected, `Failed for href: ${href}`)
+  }
+})
+
+test('ignores data URIs (Node)', (t) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="/></svg>`
+  const resvg = new Resvg(svg, {
+    imageResolving: {
+      enableRelativePaths: true,
+      baseUrl: 'https://example.com/',
+    },
+  })
+
+  const images = resvg.imagesToResolve()
+  t.is(images.length, 0)
+})
+
 test('should render using font buffer provided by options', async (t) => {
   const svg = `<svg width='480' height='150' viewBox='-20 -80 550 100' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>
   <text x='0' y='0' font-size='100' fill='#000'>Font Buffer</text>

@@ -39,6 +39,10 @@ export type ResvgRenderOptions = {
     bottom?: number
   }
   logLevel?: 'off' | 'error' | 'warn' | 'info' | 'debug' | 'trace'
+  imageResolving?: {
+    enableRelativePaths?: boolean
+    baseUrl?: string
+  }
 }
 export class BBox {
   x: number

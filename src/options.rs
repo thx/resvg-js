@@ -12,6 +12,16 @@ use resvg::usvg::fontdb::Database;
 use resvg::usvg::{self, ImageHrefResolver, ImageKind, Options, TreeParsing};
 use serde::{Deserialize, Deserializer};
 
+/// Options for resolving image URLs.
+#[derive(Deserialize, Default, Clone)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ImageResolvingOptions {
+    /// Whether to enable relative path resolution.
+    pub enable_relative_paths: bool,
+    /// The base URL to resolve relative paths against.
+    pub base_url: Option<String>,
+}
+
 /// Image fit options.
 /// This provides the deserializer for `usvg::FitTo`.
 #[derive(Deserialize)]
@@ -161,6 +171,10 @@ pub struct JsOptions {
 
     #[serde(with = "LogLevelDef")]
     pub log_level: log::LevelFilter,
+
+    /// Options for resolving image URLs.
+    /// Default: None (preserves current behavior)
+    pub image_resolving: Option<ImageResolvingOptions>,
 }
 
 impl Default for JsOptions {
@@ -176,6 +190,7 @@ impl Default for JsOptions {
             background: None,
             crop: JsCropOptions::default(),
             log_level: log::LevelFilter::Error,
+            image_resolving: None,
         }
     }
 }
@@ -364,12 +379,75 @@ where
   }
 }
 
-pub(crate) fn tweak_usvg_options(opts: &mut usvg::Options) {
+/// Validates that a URL is safe for relative resolution.
+/// Blocks path traversal attempts and other security risks.
+fn is_safe_relative_url(url: &str) -> bool {
+    // Block path traversal patterns
+    !url.contains("..") &&
+    !url.contains("//") &&
+    !url.starts_with("/") &&
+    !url.contains("\\") &&
+    // Block URL-encoded path traversal
+    !url.contains("%2e%2e") &&
+    !url.contains("%2E%2E") &&
+    // Block URL-encoded backslashes
+    !url.contains("%5c") &&
+    !url.contains("%5C")
+}
+
+/// Resolves a relative URL against a base URL safely.
+fn resolve_relative_url(relative: &str, base: &str) -> Option<String> {
+    use url::Url;
+
+    // Parse the base URL
+    let base_url = Url::parse(base).ok()?;
+
+    // Resolve the relative URL
+    let resolved = base_url.join(relative).ok()?;
+
+    // Ensure the resolved URL is still under the same origin
+    if resolved.scheme() != base_url.scheme() || resolved.host() != base_url.host() {
+        return None;
+    }
+
+    Some(resolved.to_string())
+}
+
+/// Resolves an image URL based on the provided options.
+fn resolve_image_url(url: &str, image_resolving: &Option<ImageResolvingOptions>) -> Option<String> {
+    // Always allow absolute URLs (current behavior)
+    if url.starts_with("https://") || url.starts_with("http://") {
+        return Some(url.to_string());
+    }
+
+    // Check if image resolving is enabled
+    let image_opts = image_resolving.as_ref()?;
+
+    if !image_opts.enable_relative_paths {
+        return None;
+    }
+
+    // Validate and resolve relative paths
+    let base_url = image_opts.base_url.as_ref()?;
+
+    // Security checks
+    if !is_safe_relative_url(url) {
+        return None;
+    }
+
+    // Use the url crate for safe URL resolution
+    resolve_relative_url(url, base_url)
+}
+
+pub(crate) fn tweak_usvg_options(opts: &mut usvg::Options, js_options: &JsOptions) {
     opts.image_href_resolver = ImageHrefResolver::default();
+    let image_resolving = js_options.image_resolving.clone();
+
     opts.image_href_resolver.resolve_string = Arc::new(move |data: &str, opts: &Options| {
-        if data.starts_with("https://") || data.starts_with("http://") {
-            Some(ImageKind::RAW(1, 1, Arc::new(data.as_bytes().to_vec())))
+        if let Some(resolved) = resolve_image_url(data, &image_resolving) {
+            Some(ImageKind::RAW(1, 1, Arc::new(resolved.as_bytes().to_vec())))
         } else {
+            // Fallback to default resolver for data URIs, etc.
             let resolver = ImageHrefResolver::default().resolve_string;
             (resolver)(data, opts)
         }
