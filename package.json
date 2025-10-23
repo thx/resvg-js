@@ -82,7 +82,7 @@
     "ava": "^5.3.1",
     "copyfiles": "^2.4.1",
     "dts-bundle-generator": "^9.5.1",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.25.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.31.0",
