@@ -241,10 +241,19 @@ impl Resvg {
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
-        if !bbox.width.is_finite() || !bbox.height.is_finite() {
+        // Validate bbox dimensions - reject non-finite or non-positive values
+        if !bbox.width.is_finite()
+            || !bbox.height.is_finite()
+            || bbox.width <= 0.0
+            || bbox.height <= 0.0
+        {
             return;
         }
-        let pixel_padding = padding.unwrap_or(0.0) as f32;
+        // Validate padding - reject NaN, Infinity, and negative values
+        let pixel_padding = match padding {
+            Some(val) if val.is_finite() && val >= 0.0 => val as f32,
+            _ => 0.0, // NaN, Infinity, negative, or None -> use 0.0
+        };
         let square = square.unwrap_or(false);
 
         let mut x = bbox.x as f32;
@@ -280,13 +289,17 @@ impl Resvg {
                 let final_svg_width = width;
                 let final_svg_height = height;
 
-                // Handle edge case: if content size is 0, create viewBox outside visible area for transparent result
-                if content_width == 0.0 || content_height == 0.0 {
+                // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
+                // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
+                if content_width < 1.0 || content_height < 1.0 {
                     // Create a viewBox that's positioned outside the visible area to produce transparent result
-                    self.tree.view_box.rect =
-                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0).unwrap();
-                    self.tree.size =
-                        usvg::Size::from_wh(final_svg_width, final_svg_height).unwrap();
+                    if let (Some(rect), Some(size)) = (
+                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
+                        usvg::Size::from_wh(final_svg_width, final_svg_height),
+                    ) {
+                        self.tree.view_box.rect = rect;
+                        self.tree.size = size;
+                    }
                 } else {
                     // Calculate the scale factor to fit the content within the padding
                     let scale_x = content_width / width;
@@ -303,15 +316,18 @@ impl Resvg {
                     let viewbox_x = bbox_center_x - viewbox_width / 2.0;
                     let viewbox_y = bbox_center_y - viewbox_height / 2.0;
 
-                    self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(
-                        viewbox_x,
-                        viewbox_y,
-                        viewbox_width,
-                        viewbox_height,
-                    )
-                    .unwrap();
-                    self.tree.size =
-                        usvg::Size::from_wh(final_svg_width, final_svg_height).unwrap();
+                    if let (Some(rect), Some(size)) = (
+                        usvg::NonZeroRect::from_xywh(
+                            viewbox_x,
+                            viewbox_y,
+                            viewbox_width,
+                            viewbox_height,
+                        ),
+                        usvg::Size::from_wh(final_svg_width, final_svg_height),
+                    ) {
+                        self.tree.view_box.rect = rect;
+                        self.tree.size = size;
+                    }
                 }
             }
             _ => {
@@ -324,15 +340,17 @@ impl Resvg {
                         let content_target_height =
                             (target_height as f32 - pixel_padding * 2.0).max(0.0);
 
-                        // Handle edge case: if content size is 0, create viewBox outside visible area for transparent result
-                        if content_target_width == 0.0 || content_target_height == 0.0 {
+                        // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
+                        // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
+                        if content_target_width < 1.0 || content_target_height < 1.0 {
                             // Create a viewBox that's positioned outside the visible area to produce transparent result
-                            self.tree.view_box.rect =
-                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0)
-                                    .unwrap();
-                            self.tree.size =
-                                usvg::Size::from_wh(target_width as f32, target_height as f32)
-                                    .unwrap();
+                            if let (Some(rect), Some(size)) = (
+                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
+                                usvg::Size::from_wh(target_width as f32, target_height as f32),
+                            ) {
+                                self.tree.view_box.rect = rect;
+                                self.tree.size = size;
+                            }
                         } else {
                             // Calculate what SVG size we need to achieve the target final size after fitTo
                             let required_svg_width =
@@ -347,23 +365,29 @@ impl Resvg {
                             let viewbox_x = bbox_center_x - required_svg_width / 2.0;
                             let viewbox_y = bbox_center_y - required_svg_height / 2.0;
 
-                            self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(
-                                viewbox_x,
-                                viewbox_y,
-                                required_svg_width,
-                                required_svg_height,
-                            )
-                            .unwrap();
-                            self.tree.size =
-                                usvg::Size::from_wh(required_svg_width, required_svg_height)
-                                    .unwrap();
+                            if let (Some(rect), Some(size)) = (
+                                usvg::NonZeroRect::from_xywh(
+                                    viewbox_x,
+                                    viewbox_y,
+                                    required_svg_width,
+                                    required_svg_height,
+                                ),
+                                usvg::Size::from_wh(required_svg_width, required_svg_height),
+                            ) {
+                                self.tree.view_box.rect = rect;
+                                self.tree.size = size;
+                            }
                         }
                     }
                     Err(_) => {
                         // Fallback to no padding
-                        self.tree.view_box.rect =
-                            usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
-                        self.tree.size = usvg::Size::from_wh(width, height).unwrap();
+                        if let (Some(rect), Some(size)) = (
+                            usvg::NonZeroRect::from_xywh(x, y, width, height),
+                            usvg::Size::from_wh(width, height),
+                        ) {
+                            self.tree.view_box.rect = rect;
+                            self.tree.size = size;
+                        }
                     }
                 }
             }
@@ -503,10 +527,19 @@ impl Resvg {
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
-        if !bbox.width.is_finite() || !bbox.height.is_finite() {
+        // Validate bbox dimensions - reject non-finite or non-positive values
+        if !bbox.width.is_finite()
+            || !bbox.height.is_finite()
+            || bbox.width <= 0.0
+            || bbox.height <= 0.0
+        {
             return;
         }
-        let pixel_padding = padding.unwrap_or(0.0) as f32;
+        // Validate padding - reject NaN, Infinity, and negative values
+        let pixel_padding = match padding {
+            Some(val) if val.is_finite() && val >= 0.0 => val as f32,
+            _ => 0.0, // NaN, Infinity, negative, or None -> use 0.0
+        };
         let square = square.unwrap_or(false);
 
         let mut x = bbox.x as f32;
@@ -542,13 +575,17 @@ impl Resvg {
                 let final_svg_width = width;
                 let final_svg_height = height;
 
-                // Handle edge case: if content size is 0, create viewBox outside visible area for transparent result
-                if content_width == 0.0 || content_height == 0.0 {
+                // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
+                // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
+                if content_width < 1.0 || content_height < 1.0 {
                     // Create a viewBox that's positioned outside the visible area to produce transparent result
-                    self.tree.view_box.rect =
-                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0).unwrap();
-                    self.tree.size =
-                        usvg::Size::from_wh(final_svg_width, final_svg_height).unwrap();
+                    if let (Some(rect), Some(size)) = (
+                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
+                        usvg::Size::from_wh(final_svg_width, final_svg_height),
+                    ) {
+                        self.tree.view_box.rect = rect;
+                        self.tree.size = size;
+                    }
                 } else {
                     // Calculate the scale factor to fit the content within the padding
                     let scale_x = content_width / width;
@@ -565,15 +602,18 @@ impl Resvg {
                     let viewbox_x = bbox_center_x - viewbox_width / 2.0;
                     let viewbox_y = bbox_center_y - viewbox_height / 2.0;
 
-                    self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(
-                        viewbox_x,
-                        viewbox_y,
-                        viewbox_width,
-                        viewbox_height,
-                    )
-                    .unwrap();
-                    self.tree.size =
-                        usvg::Size::from_wh(final_svg_width, final_svg_height).unwrap();
+                    if let (Some(rect), Some(size)) = (
+                        usvg::NonZeroRect::from_xywh(
+                            viewbox_x,
+                            viewbox_y,
+                            viewbox_width,
+                            viewbox_height,
+                        ),
+                        usvg::Size::from_wh(final_svg_width, final_svg_height),
+                    ) {
+                        self.tree.view_box.rect = rect;
+                        self.tree.size = size;
+                    }
                 }
             }
             _ => {
@@ -586,15 +626,17 @@ impl Resvg {
                         let content_target_height =
                             (target_height as f32 - pixel_padding * 2.0).max(0.0);
 
-                        // Handle edge case: if content size is 0, create viewBox outside visible area for transparent result
-                        if content_target_width == 0.0 || content_target_height == 0.0 {
+                        // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
+                        // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
+                        if content_target_width < 1.0 || content_target_height < 1.0 {
                             // Create a viewBox that's positioned outside the visible area to produce transparent result
-                            self.tree.view_box.rect =
-                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0)
-                                    .unwrap();
-                            self.tree.size =
-                                usvg::Size::from_wh(target_width as f32, target_height as f32)
-                                    .unwrap();
+                            if let (Some(rect), Some(size)) = (
+                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
+                                usvg::Size::from_wh(target_width as f32, target_height as f32),
+                            ) {
+                                self.tree.view_box.rect = rect;
+                                self.tree.size = size;
+                            }
                         } else {
                             // Calculate what SVG size we need to achieve the target final size after fitTo
                             let required_svg_width =
@@ -609,23 +651,29 @@ impl Resvg {
                             let viewbox_x = bbox_center_x - required_svg_width / 2.0;
                             let viewbox_y = bbox_center_y - required_svg_height / 2.0;
 
-                            self.tree.view_box.rect = usvg::NonZeroRect::from_xywh(
-                                viewbox_x,
-                                viewbox_y,
-                                required_svg_width,
-                                required_svg_height,
-                            )
-                            .unwrap();
-                            self.tree.size =
-                                usvg::Size::from_wh(required_svg_width, required_svg_height)
-                                    .unwrap();
+                            if let (Some(rect), Some(size)) = (
+                                usvg::NonZeroRect::from_xywh(
+                                    viewbox_x,
+                                    viewbox_y,
+                                    required_svg_width,
+                                    required_svg_height,
+                                ),
+                                usvg::Size::from_wh(required_svg_width, required_svg_height),
+                            ) {
+                                self.tree.view_box.rect = rect;
+                                self.tree.size = size;
+                            }
                         }
                     }
                     Err(_) => {
                         // Fallback to no padding
-                        self.tree.view_box.rect =
-                            usvg::NonZeroRect::from_xywh(x, y, width, height).unwrap();
-                        self.tree.size = usvg::Size::from_wh(width, height).unwrap();
+                        if let (Some(rect), Some(size)) = (
+                            usvg::NonZeroRect::from_xywh(x, y, width, height),
+                            usvg::Size::from_wh(width, height),
+                        ) {
+                            self.tree.view_box.rect = rect;
+                            self.tree.size = size;
+                        }
                     }
                 }
             }

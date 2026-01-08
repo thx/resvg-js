@@ -676,6 +676,77 @@ test('should return undefined if bbox is invalid', (t) => {
   t.is(resvg.innerBBox(), undefined)
 })
 
+test('cropByBBox should handle invalid padding values', (t) => {
+  const svg = `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+    <rect fill="green" x="50" y="50" width="200" height="200"/>
+  </svg>`
+  const resvg = new Resvg(svg)
+  const bbox = resvg.getBBox()!
+
+  // Invalid values should silently use 0, not throw
+  t.notThrows(() => resvg.cropByBBox(bbox, NaN))
+  t.notThrows(() => resvg.cropByBBox(bbox, Infinity))
+  t.notThrows(() => resvg.cropByBBox(bbox, -10))
+
+  // padding >= half of dimensions should produce transparent image, not panic
+  t.notThrows(() => resvg.cropByBBox(bbox, bbox.width))
+})
+
+test('cropByBBox should handle zero/negative bbox dimensions', (t) => {
+  const svg = `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+    <rect fill="green" x="50" y="50" width="200" height="200"/>
+  </svg>`
+  const resvg = new Resvg(svg)
+  const bbox = resvg.getBBox()!
+
+  // These should not panic (validation happens in Rust)
+  const zeroBbox = { ...bbox, width: 0 }
+  const negativeBbox = { ...bbox, width: -10 }
+
+  // napi-rs may reject invalid BBox objects at type conversion level (InvalidArg)
+  // or at Rust validation level (silently ignored). Both are acceptable.
+  try {
+    resvg.cropByBBox(zeroBbox as any)
+    t.pass('Zero width bbox handled without panic')
+  } catch (e: any) {
+    t.true(e.code === 'InvalidArg', 'Zero width bbox rejected at type level')
+  }
+
+  try {
+    resvg.cropByBBox(negativeBbox as any)
+    t.pass('Negative width bbox handled without panic')
+  } catch (e: any) {
+    t.true(e.code === 'InvalidArg', 'Negative width bbox rejected at type level')
+  }
+})
+
+test('cropByBBox with fitTo should handle zero/negative bbox dimensions', (t) => {
+  const svg = `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+    <rect fill="green" x="50" y="50" width="200" height="200"/>
+  </svg>`
+  const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 500 } })
+  const bbox = resvg.getBBox()!
+
+  // Modify bbox to have zero/negative dimensions
+  const zeroBbox = { ...bbox, width: 0 }
+  const negativeBbox = { ...bbox, width: -10 }
+
+  // These should not panic with fitTo option
+  try {
+    resvg.cropByBBox(zeroBbox as any)
+    t.pass('Zero width bbox with fitTo handled without panic')
+  } catch (e: any) {
+    t.true(e.code === 'InvalidArg', 'Zero width bbox rejected at type level')
+  }
+
+  try {
+    resvg.cropByBBox(negativeBbox as any)
+    t.pass('Negative width bbox with fitTo handled without panic')
+  } catch (e: any) {
+    t.true(e.code === 'InvalidArg', 'Negative width bbox rejected at type level')
+  }
+})
+
 test('should render using font buffer provided by options', async (t) => {
   const svg = `<svg width='480' height='150' viewBox='-20 -80 550 100' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>
   <text x='0' y='0' font-size='100' fill='#000'>Font Buffer</text>
