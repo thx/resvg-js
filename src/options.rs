@@ -45,10 +45,7 @@ impl FitToDef {
         };
         let width = (width * scale).round().max(0.0) as u32;
         let height = (height * scale).round().max(0.0) as u32;
-        transform = transform.pre_scale(
-            width as f32 / size.width() as f32,
-            height as f32 / size.height() as f32,
-        );
+        transform = transform.pre_scale(width as f32 / size.width(), height as f32 / size.height());
         if width == 0 || height == 0 {
             Err(Error::ZeroSized)
         } else {
@@ -72,20 +69,20 @@ pub(crate) trait ResvgReadable {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error>;
 }
 
-impl<'a> ResvgReadable for &'a str {
+impl ResvgReadable for &str {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error> {
         usvg::Tree::from_str(self, options)
     }
 }
 
-impl<'a> ResvgReadable for &'a [u8] {
+impl ResvgReadable for &[u8] {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error> {
         usvg::Tree::from_data(self, options)
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl<'a> ResvgReadable for &'a Either<String, Buffer> {
+impl ResvgReadable for &Either<String, Buffer> {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error> {
         match self {
             Either::A(s) => s.as_str().load(options),
