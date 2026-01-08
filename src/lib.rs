@@ -11,15 +11,19 @@ use napi::bindgen_prelude::{
 #[cfg(not(target_arch = "wasm32"))]
 use napi_derive::napi;
 use options::JsOptions;
+#[cfg(not(target_arch = "wasm32"))]
+use options::ResvgReadable;
 use pathfinder_content::{
     outline::{Contour, Outline},
     stroke::{LineCap, LineJoin, OutlineStrokeToFill, StrokeStyle},
 };
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::Vector2F;
+#[cfg(target_arch = "wasm32")]
+use resvg::usvg::TreeParsing;
 use resvg::{
     tiny_skia::{PathSegment, Pixmap, Point},
-    usvg::{self, ImageKind, NodeKind, TreeParsing, TreeTextToPath},
+    usvg::{self, ImageKind, NodeKind, TreeTextToPath},
 };
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{
@@ -155,11 +159,9 @@ impl Resvg {
         let (mut opts, fontdb) = js_options.to_usvg_options();
         options::tweak_usvg_options(&mut opts);
         // Parse the SVG string into a tree.
-        let mut tree = match svg {
-            Either::A(a) => usvg::Tree::from_str(a.as_str(), &opts),
-            Either::B(b) => usvg::Tree::from_data(b.as_ref(), &opts),
-        }
-        .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
+        let mut tree = svg
+            .load(&opts)
+            .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
         tree.convert_text(&fontdb);
         Ok(Resvg { tree, js_options })
     }
@@ -172,18 +174,18 @@ impl Resvg {
 
     #[napi]
     /// Output usvg-simplified SVG string
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         use usvg::TreeWriting;
         self.tree.to_string(&usvg::XmlOptions::default())
     }
 
+    // Either<T, Undefined> depends on napi 2.4.3
+    // https://github.com/napi-rs/napi-rs/releases/tag/napi@2.4.3
     #[napi(js_name = innerBBox)]
     /// Calculate a maximum bounding box of all visible elements in this SVG.
     ///
     /// Note: path bounding box are approx values.
-
-    // Either<T, Undefined> depends on napi 2.4.3
-    // https://github.com/napi-rs/napi-rs/releases/tag/napi@2.4.3
     pub fn inner_bbox(&self) -> Either<BBox, Undefined> {
         let rect = self.tree.view_box.rect;
         let rect = points_to_rect(
@@ -213,13 +215,12 @@ impl Resvg {
         }
     }
 
+    // Either<T, Undefined> depends on napi 2.4.3
+    // https://github.com/napi-rs/napi-rs/releases/tag/napi@2.4.3
     #[napi(js_name = getBBox)]
     /// Calculate a maximum bounding box of all visible elements in this SVG.
     /// This will first apply transform.
     /// Similar to `SVGGraphicsElement.getBBox()` DOM API.
-
-    // Either<T, Undefined> depends on napi 2.4.3
-    // https://github.com/napi-rs/napi-rs/releases/tag/napi@2.4.3
     pub fn get_bbox(&self) -> Either<BBox, Undefined> {
         match self.tree.root.calculate_bbox() {
             Some(bbox) => Either::A(BBox {
@@ -468,6 +469,7 @@ impl Resvg {
 
     /// Output usvg-simplified SVG string
     #[wasm_bindgen(js_name = toString)]
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         use usvg::TreeWriting;
         self.tree.to_string(&usvg::XmlOptions::default())
@@ -761,7 +763,7 @@ impl Resvg {
                 if let Some(stroke) = p.stroke.as_ref() {
                     if !no_stroke {
                         let mut style = StrokeStyle::default();
-                        style.line_width = stroke.width.get() as f32;
+                        style.line_width = stroke.width.get();
                         style.line_join = LineJoin::Miter(style.line_width);
                         style.line_cap = match stroke.linecap {
                             usvg::LineCap::Butt => LineCap::Butt,
@@ -827,7 +829,7 @@ impl Resvg {
     fn viewbox(&self) -> RectF {
         RectF::new(
             Vector2F::new(0.0, 0.0),
-            Vector2F::new(self.width() as f32, self.height() as f32),
+            Vector2F::new(self.width(), self.height()),
         )
     }
 
@@ -835,7 +837,7 @@ impl Resvg {
         let (width, height, transform) = self.js_options.fit_to.fit_to(self.tree.size)?;
         let mut pixmap = self.js_options.create_pixmap(width, height)?;
         // Render the tree
-        let _image = resvg::Tree::from_usvg(&self.tree).render(transform, &mut pixmap.as_mut());
+        resvg::Tree::from_usvg(&self.tree).render(transform, &mut pixmap.as_mut());
 
         // Crop the SVG
         let crop_rect = resvg::tiny_skia::IntRect::from_ltrb(

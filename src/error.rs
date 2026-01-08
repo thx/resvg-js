@@ -7,7 +7,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    SVG(#[from] svgtypes::Error),
+    Svg(#[from] svgtypes::Error),
     #[error(transparent)]
     USvg(#[from] resvg::usvg::Error),
     #[error(transparent)]
