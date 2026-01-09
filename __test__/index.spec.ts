@@ -686,7 +686,11 @@ test('cropByBBox should handle invalid padding values', (t) => {
   // Invalid values should silently use 0, not throw
   t.notThrows(() => resvg.cropByBBox(bbox, NaN))
   t.notThrows(() => resvg.cropByBBox(bbox, Infinity))
+  t.notThrows(() => resvg.cropByBBox(bbox, null as any))
+  t.notThrows(() => resvg.cropByBBox(bbox, undefined))
   t.notThrows(() => resvg.cropByBBox(bbox, -10))
+  t.notThrows(() => resvg.cropByBBox(bbox, 0))
+  t.notThrows(() => resvg.cropByBBox(bbox, -0))
 
   // padding >= half of dimensions should produce transparent image, not panic
   t.notThrows(() => resvg.cropByBBox(bbox, bbox.width))
