@@ -27,7 +27,7 @@ pub fn load_fonts(font_options: &JsFontOptions) -> Database {
     // 加载指定路径的字体
     for path in &font_options.font_files {
         if let Err(e) = fontdb.load_font_file(path) {
-            warn!("Failed to load '{}' cause {}.", path, e);
+            warn!("Failed to load '{path}' cause {e}.");
         }
     }
 
@@ -118,7 +118,7 @@ fn set_font_families(font_options: &JsFontOptions, fontdb: &mut Database) {
     fontdb.set_fantasy_family(&default_font_family);
     fontdb.set_monospace_family(&default_font_family);
 
-    debug!("📝 default_font_family = '{}'", default_font_family);
+    debug!("📝 default_font_family = '{default_font_family}'");
 
     #[cfg(not(target_arch = "wasm32"))]
     find_and_debug_font_path(fontdb, default_font_family.as_str())
@@ -190,8 +190,7 @@ fn find_and_debug_font_path(fontdb: &mut Database, font_family: &str) {
             fontdb.set_monospace_family(&first_font_family);
 
             warn!(
-                "Warning: The default font-family '{}' not found, set to '{}'.",
-                font_family, first_font_family,
+                "Warning: The default font-family '{font_family}' not found, set to '{first_font_family}'."
             );
         }
     }
@@ -213,10 +212,7 @@ fn get_first_font_family_or_fallback(fontdb: &mut Database) -> String {
         }
         None => {
             #[cfg(not(target_arch = "wasm32"))]
-            debug!(
-                "📝 get_first_font_family not found = '{}'",
-                default_font_family
-            );
+            debug!("📝 get_first_font_family not found = '{default_font_family}'");
         }
     }
 
