@@ -5,12 +5,12 @@
 use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
+use napi::bindgen_prelude::Result as NapiResult;
+#[cfg(not(target_arch = "wasm32"))]
 use napi::bindgen_prelude::{
     AbortSignal, AsyncTask, Buffer, Either, Env, Error as NapiError, ObjectFinalize, Task,
     Undefined,
 };
-#[cfg(not(target_arch = "wasm32"))]
-use napi::bindgen_prelude::Result as NapiResult;
 #[cfg(not(target_arch = "wasm32"))]
 use napi_derive::napi;
 use options::JsOptions;
@@ -154,7 +154,11 @@ impl ObjectFinalize for RenderedImage {
 #[napi]
 impl Resvg {
     #[napi(constructor)]
-    pub fn new(env: Env, svg: Either<String, Buffer>, options: Option<String>) -> Result<Resvg, NapiError> {
+    pub fn new(
+        env: Env,
+        svg: Either<String, Buffer>,
+        options: Option<String>,
+    ) -> Result<Resvg, NapiError> {
         let resvg = Resvg::new_inner_no_mem(&svg, options)?;
 
         // Report memory usage to V8
@@ -886,6 +890,7 @@ impl Resvg {
         Ok(RenderedImage { pix: pixmap })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn render_inner(&self, env: Env) -> Result<RenderedImage, Error> {
         let rendered = self.render_inner_no_mem()?;
 
@@ -897,6 +902,12 @@ impl Resvg {
             .map_err(|e| Error::Napi(e))?;
 
         Ok(rendered)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn render_inner(&self) -> Result<RenderedImage, Error> {
+        // WASM doesn't have Env, so we skip adjust_external_memory
+        self.render_inner_no_mem()
     }
 
     fn images_to_resolve_inner(&self) -> Result<Vec<String>, Error> {
@@ -965,10 +976,13 @@ impl Task for AsyncRenderer {
 
     fn resolve(
         &mut self,
-        _env: napi::Env,
+        env: napi::Env,
+        // _env: napi::Env,
         result: Self::Output,
     ) -> Result<Self::JsValue, NapiError> {
-        // Memory is reported via RenderedImage's ObjectFinalize when it's garbage collected
+        // Report memory usage to V8 so it can more aggressively reclaim memory
+        let memory_size = self.render_width as i64 * self.render_height as i64 * 4;
+        env.adjust_external_memory(memory_size)?;
         Ok(result)
     }
 }
@@ -981,7 +995,12 @@ pub fn render_async(
     signal: Option<AbortSignal>,
 ) -> AsyncTask<AsyncRenderer> {
     AsyncTask::with_optional_signal(
-        AsyncRenderer { options, svg, render_width: 0, render_height: 0 },
+        AsyncRenderer {
+            options,
+            svg,
+            render_width: 0,
+            render_height: 0,
+        },
         signal,
     )
 }
