@@ -925,10 +925,7 @@ pub fn render_async(
     options: Option<String>,
     signal: Option<AbortSignal>,
 ) -> AsyncTask<AsyncRenderer> {
-    match signal {
-        Some(s) => AsyncTask::with_signal(AsyncRenderer { options, svg }, s),
-        None => AsyncTask::new(AsyncRenderer { options, svg }),
-    }
+    AsyncTask::with_optional_signal(AsyncRenderer { options, svg }, signal)
 }
 
 fn points_to_rect(min: Vector2F, max: Vector2F) -> RectF {

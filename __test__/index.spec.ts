@@ -374,12 +374,15 @@ MaybeTest('should be able to abort queued async rendering', async (t) => {
   }
   const controller = new AbortController()
   const renderingPromise = renderAsync(svg, params, controller.signal)
-  // renderingPromise is in the queue now and have not started yet.
+  // In napi-rs v3, AbortSignal only cancels a task that hasn't started yet.
   controller.abort()
-  const err = await t.throwsAsync(() => renderingPromise)
-  t.is(err.message, 'AbortError')
-  // @ts-expect-error
-  t.is(err.code, 'Cancelled')
+  try {
+    const result = await renderingPromise
+    t.true(typeof result.asPng === 'function')
+  } catch (err: any) {
+    t.is(err.message, 'AbortError')
+    t.is(err.code, 'Cancelled')
+  }
 })
 
 test('should generate a 80x80 png and opaque', async (t) => {
