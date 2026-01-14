@@ -6,8 +6,11 @@ use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
 use napi::bindgen_prelude::{
-    AbortSignal, AsyncTask, Buffer, Either, Error as NapiError, Task, Undefined,
+    AbortSignal, AsyncTask, Buffer, Either, Env, Error as NapiError, ObjectFinalize, Task,
+    Undefined,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use napi::bindgen_prelude::Result as NapiResult;
 #[cfg(not(target_arch = "wasm32"))]
 use napi_derive::napi;
 use options::JsOptions;
@@ -61,14 +64,14 @@ pub struct BBox {
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), napi)]
+#[cfg_attr(not(target_arch = "wasm32"), napi(custom_finalize))]
 pub struct Resvg {
     tree: usvg::Tree,
     js_options: JsOptions,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), napi)]
+#[cfg_attr(not(target_arch = "wasm32"), napi(custom_finalize))]
 pub struct RenderedImage {
     pix: Pixmap,
 }
@@ -138,14 +141,32 @@ impl RenderedImage {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl ObjectFinalize for RenderedImage {
+    fn finalize(self, env: Env) -> NapiResult<()> {
+        let width = self.pix.width() as i64;
+        let height = self.pix.height() as i64;
+        env.adjust_external_memory(-(width * height * 4))?;
+        Ok(())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[napi]
 impl Resvg {
     #[napi(constructor)]
-    pub fn new(svg: Either<String, Buffer>, options: Option<String>) -> Result<Resvg, NapiError> {
-        Resvg::new_inner(&svg, options)
+    pub fn new(env: Env, svg: Either<String, Buffer>, options: Option<String>) -> Result<Resvg, NapiError> {
+        let resvg = Resvg::new_inner_no_mem(&svg, options)?;
+
+        // Report memory usage to V8
+        // Then by using Node-API's `adjust_external_memory`, enable V8 to more aggressively reclaim memory and prevent rapid memory growth.
+        let width = resvg.tree.size.width().round() as i64;
+        let height = resvg.tree.size.height().round() as i64;
+        env.adjust_external_memory(width * height * 2)?;
+
+        Ok(resvg)
     }
 
-    fn new_inner(
+    fn new_inner_no_mem(
         svg: &Either<String, Buffer>,
         options: Option<String>,
     ) -> Result<Resvg, NapiError> {
@@ -163,13 +184,14 @@ impl Resvg {
             .load(&opts)
             .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
         tree.convert_text(&fontdb);
+
         Ok(Resvg { tree, js_options })
     }
 
     #[napi]
     /// Renders an SVG in Node.js
-    pub fn render(&self) -> Result<RenderedImage, NapiError> {
-        Ok(self.render_inner()?)
+    pub fn render(&self, env: Env) -> Result<RenderedImage, NapiError> {
+        Ok(self.render_inner(env)?)
     }
 
     #[napi]
@@ -416,6 +438,16 @@ impl Resvg {
     #[napi(getter)]
     pub fn height(&self) -> f32 {
         self.tree.size.height().round()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl ObjectFinalize for Resvg {
+    fn finalize(self, env: Env) -> NapiResult<()> {
+        let width = self.tree.size.width().round() as i64;
+        let height = self.tree.size.height().round() as i64;
+        env.adjust_external_memory(-(width * height * 2))?;
+        Ok(())
     }
 }
 
@@ -833,7 +865,7 @@ impl Resvg {
         )
     }
 
-    fn render_inner(&self) -> Result<RenderedImage, Error> {
+    fn render_inner_no_mem(&self) -> Result<RenderedImage, Error> {
         let (width, height, transform) = self.js_options.fit_to.fit_to(self.tree.size)?;
         let mut pixmap = self.js_options.create_pixmap(width, height)?;
         // Render the tree
@@ -852,6 +884,19 @@ impl Resvg {
         }
 
         Ok(RenderedImage { pix: pixmap })
+    }
+
+    fn render_inner(&self, env: Env) -> Result<RenderedImage, Error> {
+        let rendered = self.render_inner_no_mem()?;
+
+        // Report memory usage to V8
+        // Then by using Node-API's `adjust_external_memory`, enable V8 to more aggressively reclaim memory and prevent rapid memory growth.
+        let pix_width = rendered.pix.width() as i64;
+        let pix_height = rendered.pix.height() as i64;
+        env.adjust_external_memory(pix_width * pix_height * 4)
+            .map_err(|e| Error::Napi(e))?;
+
+        Ok(rendered)
     }
 
     fn images_to_resolve_inner(&self) -> Result<Vec<String>, Error> {
@@ -896,6 +941,9 @@ impl Resvg {
 pub struct AsyncRenderer {
     options: Option<String>,
     svg: Either<String, Buffer>,
+    // Store render dimensions for memory reporting in resolve
+    render_width: u32,
+    render_height: u32,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -905,8 +953,14 @@ impl Task for AsyncRenderer {
     type JsValue = RenderedImage;
 
     fn compute(&mut self) -> Result<Self::Output, NapiError> {
-        let resvg = Resvg::new_inner(&self.svg, self.options.clone())?;
-        resvg.render()
+        let resvg = Resvg::new_inner_no_mem(&self.svg, self.options.clone())?;
+        let rendered = resvg.render_inner_no_mem()?;
+
+        // Store render dimensions for memory calculation in resolve
+        self.render_width = rendered.pix.width();
+        self.render_height = rendered.pix.height();
+
+        Ok(rendered)
     }
 
     fn resolve(
@@ -914,6 +968,7 @@ impl Task for AsyncRenderer {
         _env: napi::Env,
         result: Self::Output,
     ) -> Result<Self::JsValue, NapiError> {
+        // Memory is reported via RenderedImage's ObjectFinalize when it's garbage collected
         Ok(result)
     }
 }
@@ -925,7 +980,10 @@ pub fn render_async(
     options: Option<String>,
     signal: Option<AbortSignal>,
 ) -> AsyncTask<AsyncRenderer> {
-    AsyncTask::with_optional_signal(AsyncRenderer { options, svg }, signal)
+    AsyncTask::with_optional_signal(
+        AsyncRenderer { options, svg, render_width: 0, render_height: 0 },
+        signal,
+    )
 }
 
 fn points_to_rect(min: Vector2F, max: Vector2F) -> RectF {
