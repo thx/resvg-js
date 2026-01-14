@@ -104,7 +104,7 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: yarn build --target aarch64-pc-windows-msvc
-    name: stable - ${{ matrix.settings.target }} - node@18
+    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v4
@@ -112,7 +112,7 @@ jobs:
         uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
         with:
-          node-version: 18
+          node-version: 20
           cache: yarn
       - name: Rustup toolchain version
         shell: bash
@@ -155,7 +155,7 @@ jobs:
         uses: actions/setup-node@v4
         if: matrix.settings.target == 'i686-pc-windows-msvc'
         with:
-          node-version: 18
+          node-version: 20
           cache: yarn
           architecture: x86
       - name: Build in docker
@@ -183,10 +183,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
 
     runs-on: ubuntu-latest
 
@@ -258,10 +257,9 @@ jobs:
           - host: windows-latest
             target: x86_64-pc-windows-msvc
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v4
@@ -290,10 +288,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -322,10 +319,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -356,10 +352,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -399,10 +394,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -441,10 +435,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - '16'
-          - '18'
           - '20'
           - '22'
+          - '24'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -492,7 +485,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           check-latest: true
           cache: yarn
       - name: Install dependencies
