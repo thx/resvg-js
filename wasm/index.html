@@ -425,6 +425,9 @@
         const pngData = resvgJS.render()
         const pngBuffer = pngData.asPng()
 
+        pngData.free()
+        resvgJS.free()
+
         document.querySelector('#output img').src = URL.createObjectURL(
           new Blob([pngBuffer], { type: 'image/png' })
         )
