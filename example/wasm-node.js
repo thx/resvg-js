@@ -2,10 +2,16 @@ const fs = require('fs').promises
 const { join } = require('path')
 const { performance } = require('perf_hooks')
 
-const { Resvg, initWasm } = require('../wasm')
+const args = process.argv.slice(2)
+const isSimd = args?.length > 0 && args[0] === '--simd'
+const wasmDir = isSimd ? 'wasm-simd' : 'wasm'
+
+const { Resvg, initWasm } = require(`../${wasmDir}`)
+
+console.info(isSimd ? '🚀🚀 Enable SIMD' : '🐢🐢 Disable SIMD')
 
 async function main() {
-  await initWasm(fs.readFile(join(__dirname, '../wasm/index_bg.wasm')))
+  await initWasm(fs.readFile(join(__dirname, `../${wasmDir}/index_bg.wasm`)))
 
   const svg = await fs.readFile(join(__dirname, './sprite.svg'))
   const opts = {
