@@ -303,8 +303,11 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: ${{ steps.docker.outputs.IMAGE }}
-          options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
-          run: yarn test
+          options: -v /usr/share/fonts:/usr/share/fonts -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
+          run: |
+            set -e
+            find /usr/share/fonts -name *.ttf
+            yarn test
 
   publish:
     name: Publish
