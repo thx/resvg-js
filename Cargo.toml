@@ -39,7 +39,7 @@ resvg = { version = "0.34.0", default-features = false, features = [
 ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-napi = { version = "3", default-features = false, features = ["serde-json", "async", "napi10"] }
+napi = { version = "3", features = ["serde-json", "async"] }
 napi-derive = "3"
 resvg = { version = "0.34.0", default-features = false, features = [
     "raster-images",
