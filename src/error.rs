@@ -20,6 +20,9 @@ pub enum Error {
     InvalidInput,
     #[error("Unsupported image types (currently resvg only supports PNG, JPEG and GIF)")]
     UnsupportedImage,
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error(transparent)]
+    Napi(#[from] napi::Error),
 }
 
 #[cfg(not(target_arch = "wasm32"))]
