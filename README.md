@@ -275,6 +275,18 @@ npm run build:wasm
 npm run test:wasm
 ```
 
+### Upgrade Yarn
+
+This project uses Yarn v4. To upgrade to a newer version, run:
+
+```bash
+yarn set version stable
+```
+
+This will automatically download the latest stable Yarn from `repo.yarnpkg.com` and update the `yarnPath` in `.yarnrc.yml`.
+
+> **Note**: If the yarn executable fails to start due to a missing binary, temporarily modify `yarnPath` in `.yarnrc.yml` to your current version to bootstrap, then run the upgrade command.
+
 ## Roadmap
 
 I will consider implementing the following features, if you happen to be interested,
