@@ -6,7 +6,8 @@ use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
 use napi::bindgen_prelude::{
-    AbortSignal, AsyncTask, Buffer, Either, Error as NapiError, Task, Undefined,
+    AbortSignal, AsyncTask, Buffer, Either, Env, Error as NapiError, ObjectFinalize, Task,
+    Undefined,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use napi_derive::napi;
@@ -68,9 +69,45 @@ pub struct Resvg {
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), napi)]
+#[cfg_attr(not(target_arch = "wasm32"), napi(custom_finalize))]
 pub struct RenderedImage {
     pix: Pixmap,
+    accounted_bytes: i64,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl RenderedImage {
+    // Reporting the required memory size to V8
+    fn external_bytes(&self) -> i64 {
+        // The format of `tiny-skia::Pixmap` is fixed as `RGBA8888` (4 bytes per pixel), so `data().len()` is essentially width * height * 4.
+        self.pix.data().len() as i64
+    }
+
+    // Report memory usage to V8
+    // Then by using Node-API's `adjust_external_memory`, enable V8 to more aggressively reclaim memory and prevent rapid memory growth.
+    // Docs: https://napi.rs/docs/concepts/class.en#custom-finalize-logic
+    // See also: https://github.com/napi-rs/napi-rs/issues/613
+    fn account_external_memory(&mut self, env: &mut Env) -> Result<(), NapiError> {
+        let new_bytes = self.external_bytes();
+        // Use a delta so we don't double-count; negative values must not exceed previously reported bytes.
+        let delta = new_bytes - self.accounted_bytes;
+        if delta != 0 {
+            // eprintln!("adjust_external_memory delta: {}", delta);
+            env.adjust_external_memory(delta)?;
+            self.accounted_bytes = new_bytes;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl ObjectFinalize for RenderedImage {
+    fn finalize(self, env: Env) -> napi::Result<()> {
+        if self.accounted_bytes != 0 {
+            env.adjust_external_memory(-self.accounted_bytes)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -168,8 +205,10 @@ impl Resvg {
 
     #[napi]
     /// Renders an SVG in Node.js
-    pub fn render(&self) -> Result<RenderedImage, NapiError> {
-        Ok(self.render_inner()?)
+    pub fn render(&self, mut env: Env) -> Result<RenderedImage, NapiError> {
+        let mut rendered = self.render_inner()?;
+        rendered.account_external_memory(&mut env)?;
+        Ok(rendered)
     }
 
     #[napi]
@@ -851,7 +890,10 @@ impl Resvg {
             pixmap = pixmap.clone_rect(crop_rect).unwrap_or(pixmap);
         }
 
-        Ok(RenderedImage { pix: pixmap })
+        Ok(RenderedImage {
+            pix: pixmap,
+            accounted_bytes: 0,
+        })
     }
 
     fn images_to_resolve_inner(&self) -> Result<Vec<String>, Error> {
@@ -906,14 +948,15 @@ impl Task for AsyncRenderer {
 
     fn compute(&mut self) -> Result<Self::Output, NapiError> {
         let resvg = Resvg::new_inner(&self.svg, self.options.clone())?;
-        resvg.render()
+        resvg.render_inner().map_err(Into::into)
     }
 
     fn resolve(
         &mut self,
-        _env: napi::Env,
-        result: Self::Output,
+        mut env: napi::Env,
+        mut result: Self::Output,
     ) -> Result<Self::JsValue, NapiError> {
+        result.account_external_memory(&mut env)?;
         Ok(result)
     }
 }
