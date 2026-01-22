@@ -9,6 +9,22 @@ This changelog also contains important changes in dependencies.
 
 ## [Unreleased]
 
+## [2.7.0-alpha.0] - 2026-01-22
+
+### Added
+
+- feat: more aggressive GC to prevent continued growth of memory usage
+
+  Previously, resvg-js exhibited persistent RSS growth during continuous operation, which appeared to be a memory leak but was not!
+
+  This occurred because memory allocated for SVG rendering in Rust was not detected by Node.js (V8) by default. Consequently, the garbage collector failed to trigger promptly, leading to the observed steady increase in RSS.
+
+  In this PR, I use `adjust_external_memory()` via napi-rs to inform V8 about this "external memory held by JS objects." This allows the GC to collect it as early as possible based on actual memory pressure, thereby stabilizing RSS.
+
+  See [`scripts/test-memory.mjs`](scripts/test-memory.mjs) for testing.
+
+- feat: migration napi-rs V2 to V3
+
 ## [2.6.3-alpha.3] - 2026-01-09
 
 - fix: enhance `cropByBBox()` input validation to prevent panics
@@ -665,7 +681,8 @@ The first official version, use [resvg 0.18.0](https://github.com/RazrFalcon/res
 - Support custom fonts and system fonts.
 - Supports setting the background color of PNG.
 
-[unreleased]: https://github.com/yisibl/resvg-js/compare/2.6.3-alpha.2...HEAD
+[unreleased]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.0...HEAD
+[2.7.0-alpha.0]: https://github.com/yisibl/resvg-js/compare/2.6.3-alpha.3...v2.7.0-alpha.0
 [2.6.3-alpha.3]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.2...v2.6.3-alpha.3
 [2.6.3-alpha.2]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.1...v2.6.3-alpha.2
 [2.6.3-alpha.1]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.0...v2.6.3-alpha.1

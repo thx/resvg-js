@@ -1,6 +1,6 @@
 {
   "name": "@resvg/resvg-js-linux-x64-musl",
-  "version": "2.6.3-alpha.3",
+  "version": "2.7.0-alpha.0",
   "os": [
     "linux"
   ],
@@ -34,5 +34,8 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "git@github.com:yisibl/resvg-js.git"
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/yisibl/resvg-js.git"
+  }
 }

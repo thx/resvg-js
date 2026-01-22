@@ -1,7 +1,12 @@
 {
   "name": "@resvg/resvg-wasm",
-  "version": "2.6.3-alpha.3",
+  "version": "2.7.0-alpha.0",
   "description": "A high-performance SVG renderer and toolkit, powered by Rust based resvg and napi-rs",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/yisibl/resvg-js.git"
+  },
+  "license": "MPL-2.0",
   "main": "index.js",
   "module": "index.mjs",
   "unpkg": "index.min.js",
@@ -31,7 +36,6 @@
     "svg2img",
     "svg to png"
   ],
-  "license": "MPL-2.0",
   "engines": {
     "node": ">= 10"
   },
@@ -39,6 +43,5 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "repository": "git@github.com:yisibl/resvg-js.git",
   "sideEffects": false
 }
