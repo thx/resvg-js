@@ -72,6 +72,7 @@ pub struct Resvg {
 #[cfg_attr(not(target_arch = "wasm32"), napi(custom_finalize))]
 pub struct RenderedImage {
     pix: Pixmap,
+    #[cfg(not(target_arch = "wasm32"))]
     accounted_bytes: i64,
 }
 
@@ -892,6 +893,7 @@ impl Resvg {
 
         Ok(RenderedImage {
             pix: pixmap,
+            #[cfg(not(target_arch = "wasm32"))]
             accounted_bytes: 0,
         })
     }

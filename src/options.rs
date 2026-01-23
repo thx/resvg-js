@@ -8,8 +8,10 @@ use crate::error::Error;
 #[cfg(not(target_arch = "wasm32"))]
 use napi::{Either, bindgen_prelude::Buffer};
 use resvg::tiny_skia::{Pixmap, Transform};
+#[cfg(not(target_arch = "wasm32"))]
+use resvg::usvg::TreeParsing;
 use resvg::usvg::fontdb::Database;
-use resvg::usvg::{self, ImageHrefResolver, ImageKind, Options, TreeParsing};
+use resvg::usvg::{self, ImageHrefResolver, ImageKind, Options};
 use serde::{Deserialize, Deserializer};
 
 /// Image fit options.
@@ -65,16 +67,19 @@ enum LogLevelDef {
     Trace,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) trait ResvgReadable {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error>;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl ResvgReadable for &str {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error> {
         usvg::Tree::from_str(self, options)
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl ResvgReadable for &[u8] {
     fn load(&self, options: &usvg::Options) -> Result<usvg::Tree, usvg::Error> {
         usvg::Tree::from_data(self, options)
