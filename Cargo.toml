@@ -1,6 +1,6 @@
 [package]
 authors = ["yisibl <percyley@qq.com>"]
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 name = "resvg-js"
 version = "1.0.0"

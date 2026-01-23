@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::error::Error;
 #[cfg(not(target_arch = "wasm32"))]
-use napi::{bindgen_prelude::Buffer, Either};
+use napi::{Either, bindgen_prelude::Buffer};
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::fontdb::Database;
 use resvg::usvg::{self, ImageHrefResolver, ImageKind, Options, TreeParsing};
@@ -353,12 +353,12 @@ where
     D: Deserializer<'de>,
 {
     match u64::deserialize(deserializer)? {
-    0 => Ok(usvg::ImageRendering::OptimizeQuality),
-    1 => Ok(usvg::ImageRendering::OptimizeSpeed),
-    n => Err(serde::de::Error::custom(format_args!(
-      "Invalid ImageRendering value: {n}. Must be these numbers: 0 (OptimizeQuality) or 1 (OptimizeSpeed)."
-    ))),
-  }
+        0 => Ok(usvg::ImageRendering::OptimizeQuality),
+        1 => Ok(usvg::ImageRendering::OptimizeSpeed),
+        n => Err(serde::de::Error::custom(format_args!(
+            "Invalid ImageRendering value: {n}. Must be these numbers: 0 (OptimizeQuality) or 1 (OptimizeSpeed)."
+        ))),
+    }
 }
 
 pub(crate) fn tweak_usvg_options(opts: &mut usvg::Options) {

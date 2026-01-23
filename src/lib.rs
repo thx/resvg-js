@@ -28,8 +28,8 @@ use resvg::{
 };
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{
-    prelude::{wasm_bindgen, JsValue},
     JsCast,
+    prelude::{JsValue, wasm_bindgen},
 };
 
 mod error;
@@ -46,7 +46,7 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-extern "C" {
+unsafe extern "C" {
     #[wasm_bindgen(typescript_type = "Uint8Array | string")]
     pub type IStringOrBuffer;
 }
