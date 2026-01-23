@@ -171,7 +171,7 @@ fn find_and_debug_font_path(fontdb: &mut Database, font_family: &str) {
     match fontdb.query(&query) {
         Some(id) => {
             let (src, index) = fontdb.face_source(id).unwrap();
-            if let Source::File(ref path) = &src {
+            if let Source::File(path) = &src {
                 debug!(
                     "Font '{}':{} found in {}ms.",
                     path.display(),
