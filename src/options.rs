@@ -214,8 +214,8 @@ impl JsOptions {
             .map(|color| color.parse::<svgtypes::Color>())
             .transpose()?;
 
-        // Unwrap is safe, because `size` is already valid.
-        let mut pixmap = Pixmap::new(width, height).unwrap();
+        // Unwrap is not safe, we must check for allocation failure
+        let mut pixmap = Pixmap::new(width, height).ok_or(Error::AllocationFailed)?;
 
         if let Some(bg) = background {
             let color = resvg::tiny_skia::Color::from_rgba8(bg.red, bg.green, bg.blue, bg.alpha);

@@ -5,6 +5,9 @@
 use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
+use std::{any::Any, panic::AssertUnwindSafe};
+
+#[cfg(not(target_arch = "wasm32"))]
 use napi::bindgen_prelude::{
     AbortSignal, AsyncTask, Buffer, Either, Env, Error as NapiError, ObjectFinalize, Task,
     Undefined,
@@ -207,7 +210,7 @@ impl Resvg {
     #[napi]
     /// Renders an SVG in Node.js
     pub fn render(&self, mut env: Env) -> Result<RenderedImage, NapiError> {
-        let mut rendered = self.render_inner()?;
+        let mut rendered = self.render_inner_catch_unwind()?;
         rendered.account_external_memory(&mut env)?;
         Ok(rendered)
     }
@@ -937,6 +940,28 @@ impl Resvg {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl Resvg {
+    // 需要确保 panic 策略是 unwind 才可以使 catch_unwind 生效，通常这是 Rust 构建的默认值
+    fn render_inner_catch_unwind(&self) -> Result<RenderedImage, NapiError> {
+        match std::panic::catch_unwind(AssertUnwindSafe(|| self.render_inner())) {
+            Ok(result) => result.map_err(Into::into),
+            Err(panic) => Err(Error::RenderPanic(panic_to_string(panic)).into()),
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn panic_to_string(panic: Box<dyn Any + Send>) -> String {
+    if let Some(s) = panic.downcast_ref::<&str>() {
+        s.to_string()
+    } else if let Some(s) = panic.downcast_ref::<String>() {
+        s.clone()
+    } else {
+        "unknown panic".to_string()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub struct AsyncRenderer {
     options: Option<String>,
     svg: Either<String, Buffer>,
@@ -950,7 +975,7 @@ impl Task for AsyncRenderer {
 
     fn compute(&mut self) -> Result<Self::Output, NapiError> {
         let resvg = Resvg::new_inner(&self.svg, self.options.clone())?;
-        resvg.render_inner().map_err(Into::into)
+        resvg.render_inner_catch_unwind()
     }
 
     fn resolve(

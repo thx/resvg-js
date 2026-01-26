@@ -53,6 +53,12 @@ napi-build = "2"
 [profile.release]
 lto = true    # Enable Link Time Optimization
 opt-level = 3
+# 需要确保 panic 策略是 unwind 才可以使 catch_unwind 生效，从而才能把 Rust panic 转换成错误返回给上层调用者。
+# unwind 通常是 Rust 构建的默认值，这会略微增加生成的二进制文件大小和一定的开销。
+# https://rust-lang.github.io/rfcs/1513-less-unwinding.html#compiler-defaults
+# https://doc.rust-lang.org/reference/panic.html#standard-behavior
+# 如果 panic = "abort"，panic 将立即 abort，不会展开栈，也不能被 catch_unwind 捕获。
+panic = "unwind"
 # Setting this to 1 may improve the performance of generated code, but may be slower to compile.
 # https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
 codegen-units = 1
