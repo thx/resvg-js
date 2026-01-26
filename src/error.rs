@@ -8,16 +8,28 @@ use thiserror::Error;
 pub enum Error {
     #[error(transparent)]
     Svg(#[from] svgtypes::Error),
+
     #[error(transparent)]
     USvg(#[from] resvg::usvg::Error),
+
     #[error(transparent)]
     Encoding(#[from] png::EncodingError),
+
     #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
+
     #[error("Target size is zero (please do not set the width/height/zoom options to 0)")]
     ZeroSized,
+
+    #[error("Failed to allocate Pixmap")]
+    AllocationFailed,
+
+    #[error("Rendering failed due to an resvg panic, {0}")]
+    RenderPanic(String),
+
     #[error("Input must be string or Uint8Array")]
     InvalidInput,
+
     #[error("Unsupported image types (currently resvg only supports PNG, JPEG and GIF)")]
     UnsupportedImage,
 }

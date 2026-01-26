@@ -67,7 +67,8 @@ pub fn load_wasm_fonts(
             let font_data = raw_font.dyn_into::<js_sys::Uint8Array>()?.to_vec();
 
             let font_buffer = if is_woff2(&font_data) {
-                convert_woff2_to_ttf(&mut std::io::Cursor::new(font_data)).unwrap()
+                convert_woff2_to_ttf(&mut std::io::Cursor::new(font_data))
+                    .map_err(|e| js_sys::Error::new(&format!("Failed to decode woff2 font: {e}")))?
             } else {
                 font_data
             };
@@ -170,14 +171,15 @@ fn find_and_debug_font_path(fontdb: &mut Database, font_family: &str) {
     // 查询当前使用的字体是否存在
     match fontdb.query(&query) {
         Some(id) => {
-            let (src, index) = fontdb.face_source(id).unwrap();
-            if let Source::File(path) = &src {
-                debug!(
-                    "Font '{}':{} found in {}ms.",
-                    path.display(),
-                    index,
-                    now.elapsed().as_micros() as f64 / 1000.0
-                );
+            if let Some((src, index)) = fontdb.face_source(id) {
+                if let Source::File(path) = &src {
+                    debug!(
+                        "Font '{}':{} found in {}ms.",
+                        path.display(),
+                        index,
+                        now.elapsed().as_micros() as f64 / 1000.0
+                    );
+                }
             }
         }
         None => {
@@ -202,13 +204,14 @@ fn get_first_font_family_or_fallback(fontdb: &mut Database) -> String {
 
     match fontdb.faces().next() {
         Some(face) => {
-            let base_family = face
+            if let Some(base_family) = face
                 .families
                 .iter()
                 .find(|f| f.1 == Language::English_UnitedStates)
-                .unwrap_or(&face.families[0]);
-
-            default_font_family = base_family.0.clone();
+                .or_else(|| face.families.get(0))
+            {
+                default_font_family = base_family.0.clone();
+            }
         }
         None => {
             #[cfg(not(target_arch = "wasm32"))]
