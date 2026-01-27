@@ -9,6 +9,24 @@ This changelog also contains important changes in dependencies.
 
 ## [Unreleased]
 
+## [2.7.0-alpha.1] - 2026-01-27
+
+### Added
+
+- feat: add catch_unwind protection to render to prevent Node.js process crashes
+
+  Use `catch_unwind` in the resvg-js Rust layer to capture panics, converting them into explicit errors to prevent direct panics from crashing the Node.js process. Also removed `unwrap()` calls at critical points in the rendering pipeline.
+
+  Reference: https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html
+
+### Fixed
+
+- fix: wasm build warnings
+
+### Changed
+
+- chore: upgrade to Rust 2024
+
 ## [2.7.0-alpha.0] - 2026-01-22
 
 ### Added
@@ -681,7 +699,8 @@ The first official version, use [resvg 0.18.0](https://github.com/RazrFalcon/res
 - Support custom fonts and system fonts.
 - Supports setting the background color of PNG.
 
-[unreleased]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.0...HEAD
+[unreleased]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.1...HEAD
+[2.7.0-alpha.1]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.0...v2.7.0-alpha.1
 [2.7.0-alpha.0]: https://github.com/yisibl/resvg-js/compare/2.6.3-alpha.3...v2.7.0-alpha.0
 [2.6.3-alpha.3]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.2...v2.6.3-alpha.3
 [2.6.3-alpha.2]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.1...v2.6.3-alpha.2
