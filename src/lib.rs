@@ -69,6 +69,8 @@ pub struct BBox {
 pub struct Resvg {
     tree: usvg::Tree,
     js_options: JsOptions,
+    // Indicates the crop area has no visible content; render can skip resvg to avoid panics.
+    cropped_empty: bool,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -77,6 +79,67 @@ pub struct RenderedImage {
     pix: Pixmap,
     #[cfg(not(target_arch = "wasm32"))]
     accounted_bytes: i64,
+}
+
+struct CropResult {
+    view_x: f32,
+    view_y: f32,
+    view_w: f32,
+    view_h: f32,
+    size_w: f32,
+    size_h: f32,
+    empty: bool,
+}
+
+struct CropContext {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    padding: f32,
+}
+
+impl CropContext {
+    fn compute_viewbox(
+        &self,
+        target_width: f32,
+        target_height: f32,
+        size_width: f32,
+        size_height: f32,
+    ) -> CropResult {
+        let content_target_width = (target_width - self.padding * 2.0).max(0.0);
+        let content_target_height = (target_height - self.padding * 2.0).max(0.0);
+
+        // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
+        if content_target_width < 1.0 || content_target_height < 1.0 {
+            return CropResult {
+                view_x: self.x + self.width,
+                view_y: self.y + self.height,
+                view_w: 1.0,
+                view_h: 1.0,
+                size_w: size_width,
+                size_h: size_height,
+                empty: true,
+            };
+        }
+
+        let viewbox_width = self.width * target_width / content_target_width;
+        let viewbox_height = self.height * target_height / content_target_height;
+        let bbox_center_x = self.x + self.width / 2.0;
+        let bbox_center_y = self.y + self.height / 2.0;
+        let viewbox_x = bbox_center_x - viewbox_width / 2.0;
+        let viewbox_y = bbox_center_y - viewbox_height / 2.0;
+
+        CropResult {
+            view_x: viewbox_x,
+            view_y: viewbox_y,
+            view_w: viewbox_width,
+            view_h: viewbox_height,
+            size_w: size_width,
+            size_h: size_height,
+            empty: false,
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -204,7 +267,11 @@ impl Resvg {
             .load(&opts)
             .map_err(|e| napi::Error::from_reason(format!("{e}")))?;
         tree.convert_text(&fontdb);
-        Ok(Resvg { tree, js_options })
+        Ok(Resvg {
+            tree,
+            js_options,
+            cropped_empty: false,
+        })
     }
 
     #[napi]
@@ -285,157 +352,7 @@ impl Resvg {
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
-        // Validate bbox dimensions - reject non-finite or non-positive values
-        if !bbox.width.is_finite()
-            || !bbox.height.is_finite()
-            || bbox.width <= 0.0
-            || bbox.height <= 0.0
-        {
-            return;
-        }
-        // Validate padding - reject NaN, Infinity, and negative values
-        let pixel_padding = match padding {
-            Some(val) if val.is_finite() && val >= 0.0 => val as f32,
-            _ => 0.0, // NaN, Infinity, negative, or None -> use 0.0
-        };
-        let square = square.unwrap_or(false);
-
-        let mut x = bbox.x as f32;
-        let mut y = bbox.y as f32;
-        let mut width = bbox.width as f32;
-        let mut height = bbox.height as f32;
-
-        // Make square if requested
-        if square && width != height {
-            let max_dimension = width.max(height);
-            let width_diff = max_dimension - width;
-            let height_diff = max_dimension - height;
-
-            // Adjust position to center the square
-            x -= width_diff / 2.0;
-            y -= height_diff / 2.0;
-            width = max_dimension;
-            height = max_dimension;
-        }
-
-        // Get current tree size before any modifications
-        let current_tree_size = self.tree.size;
-
-        // Check if fitTo is being used (not Original)
-        match &self.js_options.fit_to {
-            options::FitToDef::Original => {
-                // Case 1: No fitTo - crop to bbox size, then center and scale content to fit (bbox_size - padding*2)
-                // Calculate the content size (bbox size minus padding), clamp to 0 for negative values
-                let content_width = (width - pixel_padding * 2.0).max(0.0);
-                let content_height = (height - pixel_padding * 2.0).max(0.0);
-
-                // The final SVG size should be the bbox size
-                let final_svg_width = width;
-                let final_svg_height = height;
-
-                // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
-                // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
-                if content_width < 1.0 || content_height < 1.0 {
-                    // Create a viewBox that's positioned outside the visible area to produce transparent result
-                    if let (Some(rect), Some(size)) = (
-                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
-                        usvg::Size::from_wh(final_svg_width, final_svg_height),
-                    ) {
-                        self.tree.view_box.rect = rect;
-                        self.tree.size = size;
-                    }
-                } else {
-                    // Calculate the scale factor to fit the content within the padding
-                    let scale_x = content_width / width;
-                    let scale_y = content_height / height;
-                    let scale = scale_x.min(scale_y);
-
-                    // Create a viewBox that shows the original bbox area, scaled and centered
-                    let bbox_center_x = x + width / 2.0;
-                    let bbox_center_y = y + height / 2.0;
-
-                    let viewbox_width = width / scale;
-                    let viewbox_height = height / scale;
-
-                    let viewbox_x = bbox_center_x - viewbox_width / 2.0;
-                    let viewbox_y = bbox_center_y - viewbox_height / 2.0;
-
-                    if let (Some(rect), Some(size)) = (
-                        usvg::NonZeroRect::from_xywh(
-                            viewbox_x,
-                            viewbox_y,
-                            viewbox_width,
-                            viewbox_height,
-                        ),
-                        usvg::Size::from_wh(final_svg_width, final_svg_height),
-                    ) {
-                        self.tree.view_box.rect = rect;
-                        self.tree.size = size;
-                    }
-                }
-            }
-            _ => {
-                // Case 2: fitTo is used - padding is absolute pixels within the target size
-                match self.js_options.fit_to.fit_to(current_tree_size) {
-                    Ok((target_width, target_height, _)) => {
-                        // Calculate the content size in the final render (target size minus padding), clamp to 0 for negative values
-                        let content_target_width =
-                            (target_width as f32 - pixel_padding * 2.0).max(0.0);
-                        let content_target_height =
-                            (target_height as f32 - pixel_padding * 2.0).max(0.0);
-
-                        // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
-                        // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
-                        if content_target_width < 1.0 || content_target_height < 1.0 {
-                            // Create a viewBox that's positioned outside the visible area to produce transparent result
-                            if let (Some(rect), Some(size)) = (
-                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
-                                usvg::Size::from_wh(target_width as f32, target_height as f32),
-                            ) {
-                                self.tree.view_box.rect = rect;
-                                self.tree.size = size;
-                            }
-                        } else {
-                            // Calculate what SVG size we need to achieve the target final size after fitTo
-                            let required_svg_width =
-                                width * target_width as f32 / content_target_width;
-                            let required_svg_height =
-                                height * target_height as f32 / content_target_height;
-
-                            // Create a viewBox that centers the original bbox within the required SVG size
-                            let bbox_center_x = x + width / 2.0;
-                            let bbox_center_y = y + height / 2.0;
-
-                            let viewbox_x = bbox_center_x - required_svg_width / 2.0;
-                            let viewbox_y = bbox_center_y - required_svg_height / 2.0;
-
-                            if let (Some(rect), Some(size)) = (
-                                usvg::NonZeroRect::from_xywh(
-                                    viewbox_x,
-                                    viewbox_y,
-                                    required_svg_width,
-                                    required_svg_height,
-                                ),
-                                usvg::Size::from_wh(required_svg_width, required_svg_height),
-                            ) {
-                                self.tree.view_box.rect = rect;
-                                self.tree.size = size;
-                            }
-                        }
-                    }
-                    Err(_) => {
-                        // Fallback to no padding
-                        if let (Some(rect), Some(size)) = (
-                            usvg::NonZeroRect::from_xywh(x, y, width, height),
-                            usvg::Size::from_wh(width, height),
-                        ) {
-                            self.tree.view_box.rect = rect;
-                            self.tree.size = size;
-                        }
-                    }
-                }
-            }
-        }
+        self.crop_by_bbox_inner(bbox, padding, square);
     }
 
     #[napi]
@@ -490,7 +407,11 @@ impl Resvg {
             Err(Error::InvalidInput)
         }?;
         tree.convert_text(&fontdb);
-        Ok(Resvg { tree, js_options })
+        Ok(Resvg {
+            tree,
+            js_options,
+            cropped_empty: false,
+        })
     }
 
     /// Get the SVG width
@@ -572,157 +493,7 @@ impl Resvg {
     /// * `padding` - Optional bleed area around the crop box (default: 0.0)
     /// * `square` - Optional flag to make the crop area square using the larger dimension (default: false)
     pub fn crop_by_bbox(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
-        // Validate bbox dimensions - reject non-finite or non-positive values
-        if !bbox.width.is_finite()
-            || !bbox.height.is_finite()
-            || bbox.width <= 0.0
-            || bbox.height <= 0.0
-        {
-            return;
-        }
-        // Validate padding - reject NaN, Infinity, and negative values
-        let pixel_padding = match padding {
-            Some(val) if val.is_finite() && val >= 0.0 => val as f32,
-            _ => 0.0, // NaN, Infinity, negative, or None -> use 0.0
-        };
-        let square = square.unwrap_or(false);
-
-        let mut x = bbox.x as f32;
-        let mut y = bbox.y as f32;
-        let mut width = bbox.width as f32;
-        let mut height = bbox.height as f32;
-
-        // Make square if requested
-        if square && width != height {
-            let max_dimension = width.max(height);
-            let width_diff = max_dimension - width;
-            let height_diff = max_dimension - height;
-
-            // Adjust position to center the square
-            x -= width_diff / 2.0;
-            y -= height_diff / 2.0;
-            width = max_dimension;
-            height = max_dimension;
-        }
-
-        // Get current tree size before any modifications
-        let current_tree_size = self.tree.size;
-
-        // Check if fitTo is being used (not Original)
-        match &self.js_options.fit_to {
-            options::FitToDef::Original => {
-                // Case 1: No fitTo - crop to bbox size, then center and scale content to fit (bbox_size - padding*2)
-                // Calculate the content size (bbox size minus padding), clamp to 0 for negative values
-                let content_width = (width - pixel_padding * 2.0).max(0.0);
-                let content_height = (height - pixel_padding * 2.0).max(0.0);
-
-                // The final SVG size should be the bbox size
-                let final_svg_width = width;
-                let final_svg_height = height;
-
-                // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
-                // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
-                if content_width < 1.0 || content_height < 1.0 {
-                    // Create a viewBox that's positioned outside the visible area to produce transparent result
-                    if let (Some(rect), Some(size)) = (
-                        usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
-                        usvg::Size::from_wh(final_svg_width, final_svg_height),
-                    ) {
-                        self.tree.view_box.rect = rect;
-                        self.tree.size = size;
-                    }
-                } else {
-                    // Calculate the scale factor to fit the content within the padding
-                    let scale_x = content_width / width;
-                    let scale_y = content_height / height;
-                    let scale = scale_x.min(scale_y);
-
-                    // Create a viewBox that shows the original bbox area, scaled and centered
-                    let bbox_center_x = x + width / 2.0;
-                    let bbox_center_y = y + height / 2.0;
-
-                    let viewbox_width = width / scale;
-                    let viewbox_height = height / scale;
-
-                    let viewbox_x = bbox_center_x - viewbox_width / 2.0;
-                    let viewbox_y = bbox_center_y - viewbox_height / 2.0;
-
-                    if let (Some(rect), Some(size)) = (
-                        usvg::NonZeroRect::from_xywh(
-                            viewbox_x,
-                            viewbox_y,
-                            viewbox_width,
-                            viewbox_height,
-                        ),
-                        usvg::Size::from_wh(final_svg_width, final_svg_height),
-                    ) {
-                        self.tree.view_box.rect = rect;
-                        self.tree.size = size;
-                    }
-                }
-            }
-            _ => {
-                // Case 2: fitTo is used - padding is absolute pixels within the target size
-                match self.js_options.fit_to.fit_to(current_tree_size) {
-                    Ok((target_width, target_height, _)) => {
-                        // Calculate the content size in the final render (target size minus padding), clamp to 0 for negative values
-                        let content_target_width =
-                            (target_width as f32 - pixel_padding * 2.0).max(0.0);
-                        let content_target_height =
-                            (target_height as f32 - pixel_padding * 2.0).max(0.0);
-
-                        // Handle edge case: if content size is too small, create viewBox outside visible area for transparent result
-                        // Using 1.0 as threshold to prevent division by near-zero values that could cause OOM
-                        if content_target_width < 1.0 || content_target_height < 1.0 {
-                            // Create a viewBox that's positioned outside the visible area to produce transparent result
-                            if let (Some(rect), Some(size)) = (
-                                usvg::NonZeroRect::from_xywh(x + width, y + height, 1.0, 1.0),
-                                usvg::Size::from_wh(target_width as f32, target_height as f32),
-                            ) {
-                                self.tree.view_box.rect = rect;
-                                self.tree.size = size;
-                            }
-                        } else {
-                            // Calculate what SVG size we need to achieve the target final size after fitTo
-                            let required_svg_width =
-                                width * target_width as f32 / content_target_width;
-                            let required_svg_height =
-                                height * target_height as f32 / content_target_height;
-
-                            // Create a viewBox that centers the original bbox within the required SVG size
-                            let bbox_center_x = x + width / 2.0;
-                            let bbox_center_y = y + height / 2.0;
-
-                            let viewbox_x = bbox_center_x - required_svg_width / 2.0;
-                            let viewbox_y = bbox_center_y - required_svg_height / 2.0;
-
-                            if let (Some(rect), Some(size)) = (
-                                usvg::NonZeroRect::from_xywh(
-                                    viewbox_x,
-                                    viewbox_y,
-                                    required_svg_width,
-                                    required_svg_height,
-                                ),
-                                usvg::Size::from_wh(required_svg_width, required_svg_height),
-                            ) {
-                                self.tree.view_box.rect = rect;
-                                self.tree.size = size;
-                            }
-                        }
-                    }
-                    Err(_) => {
-                        // Fallback to no padding
-                        if let (Some(rect), Some(size)) = (
-                            usvg::NonZeroRect::from_xywh(x, y, width, height),
-                            usvg::Size::from_wh(width, height),
-                        ) {
-                            self.tree.view_box.rect = rect;
-                            self.tree.size = size;
-                        }
-                    }
-                }
-            }
-        }
+        self.crop_by_bbox_inner(bbox, padding, square);
     }
 
     #[wasm_bindgen(js_name = imagesToResolve)]
@@ -876,11 +647,133 @@ impl Resvg {
         )
     }
 
+    fn crop_by_bbox_inner(&mut self, bbox: &BBox, padding: Option<f64>, square: Option<bool>) {
+        // Validate bbox dimensions - reject non-finite or non-positive values
+        if !bbox.width.is_finite()
+            || !bbox.height.is_finite()
+            || bbox.width <= 0.0
+            || bbox.height <= 0.0
+        {
+            return;
+        }
+
+        // Validate padding - reject NaN, Infinity, and negative values
+        let pixel_padding = match padding {
+            Some(val) if val.is_finite() && val >= 0.0 => val as f32,
+            _ => 0.0, // NaN, Infinity, negative, or None -> use 0.0
+        };
+        let square = square.unwrap_or(false);
+
+        let mut x = bbox.x as f32;
+        let mut y = bbox.y as f32;
+        let mut width = bbox.width as f32;
+        let mut height = bbox.height as f32;
+
+        if square && width != height {
+            let max_dimension = width.max(height);
+            let width_diff = max_dimension - width;
+            let height_diff = max_dimension - height;
+
+            x -= width_diff / 2.0;
+            y -= height_diff / 2.0;
+            width = max_dimension;
+            height = max_dimension;
+        }
+
+        // Reset flag for safety in case future branches skip apply_crop().
+        self.cropped_empty = false;
+
+        fn apply_crop(this: &mut Resvg, result: CropResult) {
+            // Track empty output to bypass rendering while keeping output size/background.
+            this.cropped_empty = result.empty;
+            if let (Some(rect), Some(size)) = (
+                usvg::NonZeroRect::from_xywh(
+                    result.view_x,
+                    result.view_y,
+                    result.view_w,
+                    result.view_h,
+                ),
+                usvg::Size::from_wh(result.size_w, result.size_h),
+            ) {
+                this.tree.view_box.rect = rect;
+                this.tree.size = size;
+            }
+        }
+
+        let base_size = match usvg::Size::from_wh(width, height) {
+            Some(size) => size,
+            None => return,
+        };
+        let context = CropContext {
+            x,
+            y,
+            width,
+            height,
+            padding: pixel_padding,
+        };
+
+        match &self.js_options.fit_to {
+            options::FitToDef::Original => {
+                apply_crop(self, context.compute_viewbox(width, height, width, height));
+            }
+            _ => match self.js_options.fit_to.fit_to(base_size) {
+                Ok((target_width, target_height, _)) => {
+                    let mut target_width = target_width as f32;
+                    let mut target_height = target_height as f32;
+
+                    if square {
+                        let side = match &self.js_options.fit_to {
+                            options::FitToDef::Width(_) => target_width,
+                            options::FitToDef::Height(_) => target_height,
+                            options::FitToDef::Zoom(_) => target_width.max(target_height),
+                            options::FitToDef::Original => target_width.max(target_height),
+                        };
+                        target_width = side;
+                        target_height = side;
+                    }
+
+                    let (size_width, size_height) = match &self.js_options.fit_to {
+                        options::FitToDef::Zoom(scale) if *scale > 0.0 => {
+                            (target_width / scale, target_height / scale)
+                        }
+                        _ => (target_width, target_height),
+                    };
+
+                    apply_crop(
+                        self,
+                        context.compute_viewbox(
+                            target_width,
+                            target_height,
+                            size_width,
+                            size_height,
+                        ),
+                    );
+                }
+                Err(_) => {
+                    apply_crop(
+                        self,
+                        CropResult {
+                            view_x: x,
+                            view_y: y,
+                            view_w: width,
+                            view_h: height,
+                            size_w: width,
+                            size_h: height,
+                            empty: false,
+                        },
+                    );
+                }
+            },
+        }
+    }
+
     fn render_inner(&self) -> Result<RenderedImage, Error> {
         let (width, height, transform) = self.js_options.fit_to.fit_to(self.tree.size)?;
         let mut pixmap = self.js_options.create_pixmap(width, height)?;
-        // Render the tree
-        resvg::Tree::from_usvg(&self.tree).render(transform, &mut pixmap.as_mut());
+        // Skip rendering when the crop yields no visible content.
+        if !self.cropped_empty {
+            resvg::Tree::from_usvg(&self.tree).render(transform, &mut pixmap.as_mut());
+        }
 
         // Crop the SVG
         let crop_rect = resvg::tiny_skia::IntRect::from_ltrb(
