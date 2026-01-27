@@ -82,7 +82,7 @@
     "@types/node": "^22.10.1",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.7.2",
-    "ava": "^5.3.1",
+    "ava": "^6.0.0",
     "copyfiles": "^2.4.1",
     "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.24.0",
