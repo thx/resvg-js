@@ -1,6 +1,6 @@
 {
   "name": "@resvg/resvg-js-linux-arm64-musl",
-  "version": "2.7.0-alpha.1",
+  "version": "2.7.0-alpha.2",
   "os": [
     "linux"
   ],

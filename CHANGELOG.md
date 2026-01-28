@@ -9,6 +9,17 @@ This changelog also contains important changes in dependencies.
 
 ## [Unreleased]
 
+## [2.7.0-alpha.2] - 2026-01-28
+
+### Changed
+
+- refactor: extract `cropByBBox` logic and prevent overflow panics
+  - Add `CropContext/CropResult` structs to encapsulate crop calculations
+  - Extract `crop_by_bbox_inner()` for shared NAPI/WASM implementation
+  - Performance optimization: Add `cropped_empty` flag to skip rendering when crop yields no visible content
+  - Skip resvg rendering for empty crops to avoid IntRect overflow panics
+  - Move cropByBBox tests to dedicated `index-bbox.spec.ts`
+
 ## [2.7.0-alpha.1] - 2026-01-27
 
 ### Added
@@ -699,9 +710,10 @@ The first official version, use [resvg 0.18.0](https://github.com/RazrFalcon/res
 - Support custom fonts and system fonts.
 - Supports setting the background color of PNG.
 
-[unreleased]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.1...HEAD
+[unreleased]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.2...HEAD
+[2.7.0-alpha.2]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.1...v2.7.0-alpha.2
 [2.7.0-alpha.1]: https://github.com/yisibl/resvg-js/compare/v2.7.0-alpha.0...v2.7.0-alpha.1
-[2.7.0-alpha.0]: https://github.com/yisibl/resvg-js/compare/2.6.3-alpha.3...v2.7.0-alpha.0
+[2.7.0-alpha.0]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.3...v2.7.0-alpha.0
 [2.6.3-alpha.3]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.2...v2.6.3-alpha.3
 [2.6.3-alpha.2]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.1...v2.6.3-alpha.2
 [2.6.3-alpha.1]: https://github.com/yisibl/resvg-js/compare/v2.6.3-alpha.0...v2.6.3-alpha.1

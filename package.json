@@ -1,6 +1,6 @@
 {
   "name": "@resvg/resvg-js",
-  "version": "2.7.0-alpha.1",
+  "version": "2.7.0-alpha.2",
   "description": "A high-performance SVG renderer and toolkit, powered by Rust based resvg and napi-rs",
   "main": "index.js",
   "repository": {
