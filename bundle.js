@@ -12,17 +12,17 @@ const commonOptions = {
 buildSync({
   ...commonOptions,
   format: 'cjs',
-  outfile: 'wasm/index.js',
+  outfile: 'wasm-simd/index.js',
 })
 buildSync({
   ...commonOptions,
   format: 'esm',
-  outfile: 'wasm/index.mjs',
+  outfile: 'wasm-simd/index.mjs',
 })
 buildSync({
   ...commonOptions,
   format: 'iife',
   minify: true,
   globalName: 'resvg',
-  outfile: 'wasm/index.min.js',
+  outfile: 'wasm-simd/index.min.js',
 })
