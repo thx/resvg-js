@@ -186,6 +186,8 @@ This package also ships a pure WebAssembly artifact built with `wasm-bindgen` to
     const resvgJS = new resvg.Resvg(svg, opts)
     const pngData = resvgJS.render(svg, opts) // Output PNG data, Uint8Array
     const pngBuffer = pngData.asPng()
+    pngData.free() // Free memory
+    resvgJS.free()
     const svgURL = URL.createObjectURL(new Blob([pngData], { type: 'image/png' }))
     document.getElementById('output').src = svgURL
   })()
