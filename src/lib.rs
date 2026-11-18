@@ -246,13 +246,18 @@ impl RenderedImage {
 impl Resvg {
     #[napi(constructor)]
     pub fn new(svg: Either<String, Buffer>, options: Option<String>) -> Result<Resvg, NapiError> {
-        Resvg::new_inner(&svg, options)
+        Resvg::new_inner_catch_unwind(&svg, options)
     }
 
     fn new_inner(
         svg: &Either<String, Buffer>,
         options: Option<String>,
     ) -> Result<Resvg, NapiError> {
+        #[cfg(test)]
+        if tests::PANIC_IN_NEW_INNER.get() {
+            panic!("test panic in new_inner");
+        }
+
         let js_options: JsOptions = options
             .and_then(|o| serde_json::from_str(o.as_str()).ok())
             .unwrap_or_default();
@@ -841,6 +846,20 @@ impl Resvg {
             Err(panic) => Err(Error::RenderPanic(panic_to_string(panic)).into()),
         }
     }
+
+    // The constructor parses the SVG and converts its text to paths, so a panic
+    // in the parser or in the text shaper has to be caught here, not in render.
+    // For example, with resvg 0.34 `<text>&#x1B44;</text>` (a lone Balinese virama)
+    // panics in rustybuzz when a font with Balinese is loaded.
+    fn new_inner_catch_unwind(
+        svg: &Either<String, Buffer>,
+        options: Option<String>,
+    ) -> Result<Resvg, NapiError> {
+        match std::panic::catch_unwind(AssertUnwindSafe(|| Resvg::new_inner(svg, options))) {
+            Ok(result) => result,
+            Err(panic) => Err(Error::ParsePanic(panic_to_string(panic)).into()),
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -867,7 +886,7 @@ impl Task for AsyncRenderer {
     type JsValue = RenderedImage;
 
     fn compute(&mut self) -> Result<Self::Output, NapiError> {
-        let resvg = Resvg::new_inner(&self.svg, self.options.clone())?;
+        let resvg = Resvg::new_inner_catch_unwind(&self.svg, self.options.clone())?;
         resvg.render_inner_catch_unwind()
     }
 
@@ -922,5 +941,59 @@ impl MimeType {
             MimeType::Gif => "image/gif",
             _ => "image/jpeg",
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use std::cell::Cell;
+
+    use super::*;
+
+    thread_local! {
+        /// Makes `Resvg::new_inner` panic on this thread, to test that its callers catch it.
+        pub(super) static PANIC_IN_NEW_INNER: Cell<bool> = const { Cell::new(false) };
+    }
+
+    /// Switches `PANIC_IN_NEW_INNER` on until it is dropped.
+    struct PanicInNewInner;
+
+    impl PanicInNewInner {
+        fn start() -> Self {
+            PANIC_IN_NEW_INNER.set(true);
+            PanicInNewInner
+        }
+    }
+
+    impl Drop for PanicInNewInner {
+        fn drop(&mut self) {
+            PANIC_IN_NEW_INNER.set(false);
+        }
+    }
+
+    const PARSE_PANIC: &str = "Parsing failed due to an resvg panic, test panic in new_inner";
+
+    // `new_inner` panics before it reads the SVG, so the tests pass an empty one.
+
+    #[test]
+    fn constructor_catches_a_panic() {
+        let _panic = PanicInNewInner::start();
+
+        let error = Resvg::new(Either::A(String::new()), None).err();
+
+        assert_eq!(error.expect("an error").reason, PARSE_PANIC);
+    }
+
+    #[test]
+    fn render_async_catches_a_panic() {
+        let _panic = PanicInNewInner::start();
+        let mut task = AsyncRenderer {
+            options: None,
+            svg: Either::A(String::new()),
+        };
+
+        let error = task.compute().err();
+
+        assert_eq!(error.expect("an error").reason, PARSE_PANIC);
     }
 }

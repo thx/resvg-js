@@ -9,6 +9,12 @@ This changelog also contains important changes in dependencies.
 
 ## [Unreleased]
 
+### Fixed
+
+- fix: catch panics in the `Resvg` constructor and in `renderAsync()` before rendering
+
+  The constructor parses the SVG and converts text to paths. A panic there, for example in the text shaper, still aborted the Node.js process.
+
 ## [2.7.0-alpha.2] - 2026-01-28
 
 ### Changed
