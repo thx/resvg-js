@@ -27,6 +27,9 @@ pub enum Error {
     #[error("Rendering failed due to an resvg panic, {0}")]
     RenderPanic(String),
 
+    #[error("Parsing failed due to an resvg panic, {0}")]
+    ParsePanic(String),
+
     #[error("Input must be string or Uint8Array")]
     InvalidInput,
 
